@@ -27,9 +27,14 @@ class VerifyTranslationTests(unittest.TestCase):
                 capture_output=True, text=True, check=False,
             )
 
+    def assert_failure(self, source, target, diagnostic):
+        result = self.run_validator(source, target)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(diagnostic, result.stderr)
+
     def base_files(self):
         return {
-            "SUMMARY.md": "# Summary\n\n- [One](src/one.md)\n- [Two](src/two.md#part)\n",
+            "src/SUMMARY.md": "# Summary\n\n- [One](one.md)\n- [Two](two.md#part)\n",
             "src/one.md": "# One\n\nA [link](https://example.test/a) and ![diagram](assets/a.bin).\n\n```rust\nfn main() {}\n```\n",
             "src/two.md": "# Two\n\nSee [ref][r].\n\n[r]: https://example.test/ref\n\n~~~text\ncompiler output\n~~~\n",
             "src/assets/a.bin": b"asset bytes",
@@ -44,30 +49,65 @@ class VerifyTranslationTests(unittest.TestCase):
     def test_rust_fence_change_fails(self):
         source = self.base_files(); target = dict(source)
         target["src/one.md"] = target["src/one.md"].replace("fn main() {}", "fn main() { println!(\"x\"); }")
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        self.assert_failure(source, target, "fenced blocks differ")
 
     def test_text_fence_change_fails(self):
         source = self.base_files(); target = dict(source)
         target["src/two.md"] = target["src/two.md"].replace("compiler output", "changed output")
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        self.assert_failure(source, target, "fenced blocks differ")
 
     def test_missing_page_fails(self):
         source = self.base_files(); target = dict(source); del target["src/two.md"]
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        self.assert_failure(source, target, "Markdown paths differ")
 
     def test_changed_url_fails(self):
         source = self.base_files(); target = dict(source)
         target["src/one.md"] = target["src/one.md"].replace("https://example.test/a", "https://other.test/a")
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        self.assert_failure(source, target, "protected link or image destinations differ")
 
     def test_changed_image_bytes_fails(self):
         source = self.base_files(); target = dict(source); target["src/assets/a.bin"] = b"other bytes"
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        self.assert_failure(source, target, "Asset SHA-256 differs")
 
     def test_changed_summary_destination_fails(self):
         source = self.base_files(); target = dict(source)
-        target["SUMMARY.md"] = target["SUMMARY.md"].replace("src/two.md#part", "src/one.md")
-        self.assertNotEqual(self.run_validator(source, target).returncode, 0)
+        target["src/SUMMARY.md"] = target["src/SUMMARY.md"].replace("two.md#part", "one.md")
+        self.assert_failure(source, target, "SUMMARY.md: local destinations differ")
+
+    def test_changed_reference_destination_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/two.md"] = target["src/two.md"].replace("https://example.test/ref", "https://other.test/ref")
+        self.assert_failure(source, target, "protected link or image destinations differ")
+
+    def test_changed_image_destination_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/one.md"] = target["src/one.md"].replace("assets/a.bin", "assets/missing.bin")
+        self.assert_failure(source, target, "protected link or image destinations differ")
+
+    def test_missing_asset_fails(self):
+        source = self.base_files(); target = dict(source); del target["src/assets/a.bin"]
+        self.assert_failure(source, target, "Missing copied asset")
+
+    def test_fence_opening_changes_fail(self):
+        source = self.base_files(); target = dict(source)
+        target["src/one.md"] = target["src/one.md"].replace("```rust", "  ```python")
+        self.assert_failure(source, target, "fenced blocks differ")
+
+    def test_fence_closing_whitespace_changes_fail(self):
+        source = self.base_files(); target = dict(source)
+        target["src/one.md"] = target["src/one.md"].replace("```\n", "```  \n")
+        self.assert_failure(source, target, "fenced blocks differ")
+
+    def test_quoted_fence_body_changes_fail(self):
+        source = self.base_files(); target = dict(source)
+        source["src/one.md"] = "> ```text\n> quoted\n> ```\n"
+        target["src/one.md"] = "> ```text\n> changed\n> ```\n"
+        self.assert_failure(source, target, "fenced blocks differ")
+
+    def test_visible_labels_and_alt_text_changes_pass(self):
+        source = self.base_files(); target = dict(source)
+        target["src/one.md"] = target["src/one.md"].replace("[link]", "[lien]").replace("![diagram]", "![schema]")
+        self.assertEqual(self.run_validator(source, target).returncode, 0)
 
 
 if __name__ == "__main__":

@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 
 
-FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})([^\n]*)\n?$")
+FENCE_RE = re.compile(r"^((?: {0,3}> ?| {0,3})*)(`{3,}|~{3,})([^\n]*)(\n?)$")
 LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
-REFERENCE_RE = re.compile(r"^\s*\[[^]]+\]:\s*<?([^\s>]+)>?")
+REFERENCE_RE = re.compile(r"^\s*\[[^]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE)
 
 
 def markdown_paths(root):
@@ -28,17 +28,21 @@ def fences(text, path):
         if not match:
             index += 1
             continue
-        marker, info = match.groups()
+        _prefix, marker, _info, _newline = match.groups()
         character = marker[0]
         closing = None
         for end in range(index + 1, len(lines)):
-            candidate = lines[end].strip()
-            if candidate and set(candidate) == {character} and len(candidate) >= len(marker):
+            candidate = lines[end]
+            closing_match = FENCE_RE.match(candidate)
+            if not closing_match or closing_match.group(2)[0] != character:
+                continue
+            candidate_body = closing_match.group(2)
+            if len(candidate_body) >= len(marker) and not closing_match.group(3).strip():
                 closing = end
                 break
         if closing is None:
             raise ValueError(f"{path}: unterminated {character} fence at line {index + 1}")
-        result.append((marker, info, tuple(lines[index + 1:closing]), lines[closing].strip()))
+        result.append((lines[index], tuple(lines[index + 1:closing]), lines[closing]))
         index = closing + 1
     return result
 
@@ -68,17 +72,20 @@ def compare(source, target):
         target_protected = protected_links(target_text)
         if source_protected != target_protected:
             errors.append(f"{relative}: protected link or image destinations differ")
-    if (source / "SUMMARY.md").exists() and (target / "SUMMARY.md").exists():
-        source_summary = protected_links((source / "SUMMARY.md").read_text(encoding="utf-8"))[0]
-        target_summary = protected_links((target / "SUMMARY.md").read_text(encoding="utf-8"))[0]
+    source_summary_path, target_summary_path = source / "src/SUMMARY.md", target / "src/SUMMARY.md"
+    if source_summary_path.exists() and target_summary_path.exists():
+        source_summary = protected_links(source_summary_path.read_text(encoding="utf-8"))[0]
+        target_summary = protected_links(target_summary_path.read_text(encoding="utf-8"))[0]
         if [destination for _, destination in source_summary if not destination.startswith(("http://", "https://", "mailto:"))] != [destination for _, destination in target_summary if not destination.startswith(("http://", "https://", "mailto:"))]:
             errors.append("SUMMARY.md: local destinations differ")
+    excluded_directories = {".git", ".github", ".superpowers", "book"}
     for path in source.rglob("*"):
-        if not path.is_file() or path.suffix.lower() == ".md" or path.name == ".gitignore" or ".git" in path.parts or ".superpowers" in path.parts:
-            continue
         relative = path.relative_to(source)
+        if not path.is_file() or path.suffix.lower() == ".md" or path.name == ".gitignore" or any(part in excluded_directories for part in relative.parts) or relative.parts[:2] == ("lists", "target"):
+            continue
         counterpart = target / relative
         if not counterpart.is_file():
+            errors.append(f"Missing copied asset: {relative}")
             continue
         if hashlib.sha256(path.read_bytes()).digest() != hashlib.sha256(counterpart.read_bytes()).digest():
             errors.append(f"Asset SHA-256 differs: {relative}")
