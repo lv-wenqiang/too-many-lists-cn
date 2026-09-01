@@ -72,7 +72,7 @@ error[E0507]: cannot move out of borrowed content
    |                   ^^^^^^^^^ cannot move out of borrowed content
 ```
 
-还是不行。原则上 Rust 其实可以接受这种写法，但它不会这么做（原因有很多，最严重的是[异常安全性][]）。我们需要一种取出 head、又不让 Rust 发现它消失了的办法。为了获得建议，我们去找臭名昭著的 Rust 黑客 Indiana Jones：
+还是不行。原则上 Rust 其实可以接受这种写法，但它不会这么做（原因有很多，最严重的是[异常安全性][exception safety]）。我们需要一种取出 head、又不让 Rust 发现它消失了的办法。为了获得建议，我们去找臭名昭著的 Rust 黑客 Indiana Jones：
 
 ![Indy准备进行mem::replace](img/indy.gif)
 
