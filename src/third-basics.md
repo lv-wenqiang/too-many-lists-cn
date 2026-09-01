@@ -1,9 +1,8 @@
-# Basics
+# 基础
 
-We already know a lot of the basics of Rust now, so we can do a lot of the
-simple stuff again.
+我们现在已经掌握了 Rust 的许多基础知识，所以很多简单的东西可以再来一遍。
 
-For the constructor, we can again just copy-paste:
+构造函数还是可以直接复制粘贴：
 
 ```rust ,ignore
 impl<T> List<T> {
@@ -13,25 +12,22 @@ impl<T> List<T> {
 }
 ```
 
-`push` and `pop` don't really make sense anymore. Instead we can provide
-`prepend` and `tail`, which provide approximately the same thing.
+`push`和`pop`在这里已经没什么意义了。取而代之，我们可以提供`prepend`和`tail`，
+它们提供的大致是同样的功能。
 
-Let's start with prepending. It takes a list and an element, and returns a
-List. Like the mutable list case, we want to make a new node, that has the old
-list as its `next` value. The only novel thing is how to *get* that next value,
-because we're not allowed to mutate anything.
+先从 prepend 开始。它接受一个链表和一个元素，返回一个 List。跟可变链表的情形
+一样，我们想造一个新节点，让旧链表作为它的`next`值。唯一新鲜的地方在于怎么*拿到*
+那个 next 值，因为我们不被允许修改任何东西。
 
-The answer to our prayers is the Clone trait. Clone is implemented by almost
-every type, and provides a generic way to get "another one like this one" that
-is logically disjoint, given only a shared reference. It's like a copy
-constructor in C++, but it's never implicitly invoked.
+回应我们祈祷的是 Clone 特征。几乎每个类型都实现了 Clone，它提供了一种通用的方式，
+仅凭一个共享引用就能得到一个“和这个一样的另一个”，且在逻辑上互不相干。它就像 C++
+里的拷贝构造函数，只不过它永远不会被隐式调用。
 
-Rc in particular uses Clone as the way to increment the reference count. So
-rather than moving a Box to be in the sublist, we just clone the head of the
-old list. We don't even need to match on the head, because Option exposes a
-Clone implementation that does exactly the thing we want.
+Rc 尤其把 Clone 当作递增引用计数的方式。所以我们不是把一个 Box 移动进子链表，
+而是直接克隆旧链表的头部。我们甚至不需要对 head 做匹配，因为 Option 暴露了一个
+恰好能干我们想要的事情的 Clone 实现。
 
-Alright, let's give it a shot:
+好了，试一把：
 
 ```rust ,ignore
 pub fn prepend(&self, elem: T) -> List<T> {
@@ -60,13 +56,11 @@ warning: field is never used: `next`
    |     ^^^^^^^^^^^^^
 ```
 
-Wow, Rust is really hard-nosed about actually using fields. It can tell no
-consumer can ever actually observe the use of these fields! Still, we seem good
-so far.
+哇，Rust 在字段到底有没有被用上这件事情上真是死板得要命。它看得出来，
+没有任何使用者能真正观察到这些字段的使用！不过到目前为止，我们看起来还不错。
 
-`tail` is the logical inverse of this operation. It takes a list and returns the
-whole list with the first element removed. All that is is cloning the *second*
-element in the list (if it exists). Let's try this:
+`tail`是这个操作在逻辑上的逆操作。它接受一个链表，返回去掉第一个元素后的整个
+链表。这不过就是克隆链表里的*第二个*元素（如果它存在的话）。来试试这个：
 
 ```rust ,ignore
 pub fn tail(&self) -> List<T> {
@@ -87,9 +81,8 @@ error[E0308]: mismatched types
               found type `std::option::Option<std::option::Option<std::rc::Rc<_>>>`
 ```
 
-Hrm, we messed up. `map` expects us to return a Y, but here we're returning an
-`Option<Y>`. Thankfully, this is another common Option pattern, and we can just
-use `and_then` to let us return an Option.
+嗯，我们搞砸了。`map`期望我们返回一个 Y，而我们这里返回的是一个`Option<Y>`。
+好在，这也是 Option 的另一个常见套路，我们只要用`and_then`就能返回一个 Option。
 
 ```rust ,ignore
 pub fn tail(&self) -> List<T> {
@@ -102,10 +95,10 @@ pub fn tail(&self) -> List<T> {
 
 ```
 
-Great.
+很好。
 
-Now that we have `tail`, we should probably provide `head`, which returns a
-reference to the first element. That's just `peek` from the mutable list:
+既然有了`tail`，我们大概也该提供`head`，它返回指向第一个元素的引用。
+这就是可变链表里的`peek`：
 
 ```rust ,ignore
 pub fn head(&self) -> Option<&T> {
@@ -118,9 +111,9 @@ pub fn head(&self) -> Option<&T> {
 
 ```
 
-Nice.
+不错。
 
-That's enough functionality that we can test it:
+功能已经够多了，可以测试一下了：
 
 
 ```rust ,ignore
@@ -169,9 +162,9 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Perfect!
+完美！
 
-Iter is also identical to how it was for our mutable list:
+Iter 也和我们可变链表里的那个一模一样：
 
 ```rust ,ignore
 pub struct Iter<'a, T> {
@@ -226,9 +219,8 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Who ever said dynamic typing was easier?
+谁说动态类型更简单来着？
 
-(chumps did)
+（是那些蠢货说的）
 
-Note that we can't implement IntoIter or IterMut for this type. We only have
-shared access to elements.
+注意，我们没法为这个类型实现 IntoIter 或 IterMut。我们只有对元素的共享访问权。

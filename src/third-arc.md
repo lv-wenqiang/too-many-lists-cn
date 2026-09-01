@@ -1,68 +1,57 @@
 # Arc
 
-One reason to use an immutable linked list is to share data across threads.
-After all, shared mutable state is the root of all evil, and one way to solve
-that is to kill the *mutable* part forever.
+使用不可变链表的一个理由，是在线程之间共享数据。
+毕竟，共享的可变状态是万恶之源，而解决它的一种办法就是把*可变*那部分永远干掉。
 
-Except our list isn't thread-safe at all. In order to be thread-safe, we need
-to fiddle with reference counts *atomically*. Otherwise, two threads could
-try to increment the reference count, *and only one would happen*. Then the
-list could get freed too soon!
+只不过我们的链表压根就不是线程安全的。要做到线程安全，我们得*原子地*摆弄
+引用计数。否则，两个线程可能同时试图递增引用计数，*而只有一次会真正生效*。
+那样链表就可能被过早释放！
 
-In order to get thread safety, we have to use *Arc*. Arc is completely identical
-to Rc except for the fact that reference counts are modified atomically. This
-has a bit of overhead if you don't need it, so Rust exposes both.
-All we need to do to make our list is replace every reference to Rc with
-`std::sync::Arc`. That's it. We're thread safe. Done!
+为了获得线程安全，我们必须使用*Arc*。Arc 和 Rc 完全相同，唯一的区别是引用
+计数是原子地修改的。如果你并不需要它，这会带来一点开销，所以 Rust 把两者
+都暴露了出来。
+我们要让链表变成线程安全的，只需要把每一处对 Rc 的引用替换成`std::sync::Arc`。
+就这样。我们线程安全了。搞定！
 
-But this raises an interesting question: how do we *know* if a type is
-thread-safe or not? Can we accidentally mess up?
+但这引出了一个有趣的问题：我们怎么*知道*一个类型是不是线程安全的？
+我们会不会一不小心就搞砸？
 
-No! You can't mess up thread-safety in Rust!
+不会！在 Rust 里你搞不砸线程安全！
 
-The reason this is the case is because Rust models thread-safety in a
-first-class way with two traits: `Send` and `Sync`.
+之所以如此，是因为 Rust 用两个特征以一等公民的方式对线程安全建模：`Send`和`Sync`。
 
-A type is *Send* if it's safe to *move* to another thread. A type is *Sync* if
-it's safe to *share* between multiple threads. That is, if `T` is Sync, `&T` is
-Send. Safe in this case means it's impossible to cause *data races*, (not to
-be mistaken with the more general issue of *race conditions*).
+如果一个类型可以安全地*移动*到另一个线程，它就是*Send*的。如果一个类型可以安全地
+在多个线程之间*共享*，它就是*Sync*的。也就是说，如果`T`是 Sync 的，那么`&T`就是
+Send 的。这里所说的安全，指的是不可能引发*数据竞争*（不要和更宽泛的*竞态条件*
+问题混为一谈）。
 
-These are marker traits, which is a fancy way of saying they're traits that
-provide absolutely no interface. You either *are* Send, or you aren't. It's just
-a property *other* APIs can require. If you aren't appropriately Send,
-then it's statically impossible to be sent to a different thread! Sweet!
+它们是标记特征，说得花哨点，就是这些特征完全不提供任何接口。你要么*是*Send，
+要么不是。它只是*其他*API 可以要求的一种属性。如果你不具备恰当的 Send 性质，
+那么在静态上就不可能被发送到另一个线程！妙啊！
 
-Send and Sync are also automatically derived traits based on whether you are
-totally composed of Send and Sync types. It's similar to how you can only
-implement Copy if you're only made of Copy types, but then we just go ahead
-and implement it automatically if you are.
+Send 和 Sync 还是自动推导的特征，取决于你是否完全由 Send 和 Sync 的类型组成。
+这类似于只有当你完全由 Copy 类型构成时才能实现 Copy，只不过这里如果你满足条件，
+我们就直接自动帮你实现了。
 
-Almost every type is Send and Sync. Most types are Send because they totally
-own their data. Most types are Sync because the only way to share data across
-threads is to put them behind a shared reference, which makes them immutable!
+几乎每个类型都是 Send 和 Sync 的。大多数类型是 Send 的，因为它们完全拥有自己的
+数据。大多数类型是 Sync 的，因为跨线程共享数据的唯一方式就是把它们放在共享引用
+后面，而这让它们成了不可变的！
 
-However there are special types that violate these properties: those that have
-*interior mutability*. So far we've only really interacted with *inherited
-mutability* (AKA external mutability): the mutability of a value is inherited
-from the mutability of its container. That is, you can't just randomly mutate
-some field of a non-mutable value because you feel like it.
+不过有些特殊类型违反了这些性质：那些具有*内部可变性*的类型。到目前为止，我们
+真正打过交道的只有*继承式可变性*（也叫外部可变性）：一个值的可变性继承自它所在
+容器的可变性。也就是说，你不能因为一时兴起，就随便去修改一个不可变值的某个字段。
 
-Interior mutability types violate this: they let you mutate through a shared
-reference. There are two major classes of interior mutability: cells, which
-only work in a single-threaded context; and locks, which work in a
-multi-threaded context. For obvious reasons, cells are cheaper when you can
-use them. There's also atomics, which are primitives that act like a lock.
+内部可变性类型违反了这一点：它们让你能透过共享引用进行修改。内部可变性主要分
+两大类：cell，只能在单线程环境中工作；以及锁，可以在多线程环境中工作。
+出于显而易见的原因，在能用 cell 的时候，cell 更便宜。此外还有原子类型，它们是
+行为类似锁的原语。
 
-So what does all of this have to do with Rc and Arc? Well, they both use
-interior mutability for their *reference count*. Worse, this reference count
-is shared between every instance! Rc just uses a cell, which means it's not
-thread safe. Arc uses an atomic, which means it *is* thread safe. Of course,
-you can't magically make a type thread safe by putting it in Arc. Arc can only
-derive thread-safety like any other type.
+那这一切跟 Rc 和 Arc 又有什么关系呢？嗯，它们俩都为自己的*引用计数*使用了内部
+可变性。更糟的是，这个引用计数是在每一个实例之间共享的！Rc 只用了一个 cell，
+这意味着它不是线程安全的。Arc 用的是原子类型，这意味着它*是*线程安全的。
+当然，你没法靠把一个类型塞进 Arc 里就魔法般地让它线程安全。Arc 和其他任何类型
+一样，只能推导出线程安全性。
 
-I really really really don't want to get into the finer details of atomic
-memory models or non-derived Send implementations. Needless to say, as you get
-deeper into Rust's thread-safety story, stuff gets more complicated. As a
-high-level consumer, it all *just works* and you don't really need to think
-about it.
+我真的真的真的不想深入原子内存模型或者非推导式 Send 实现的细枝末节。不用说，
+当你在 Rust 的线程安全故事里越走越深，东西会变得越来越复杂。作为一个上层使用者，
+这一切都*就是能用*，你其实不太需要去想它。

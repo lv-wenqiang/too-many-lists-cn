@@ -1,7 +1,7 @@
-# Final Code
+# 最终代码
 
-That's all I really have to say on the immutable stack. We're getting pretty
-good at implementing lists now!
+关于不可变栈，我真正想说的就这些了。我们现在实现链表已经相当
+熟练了！
 
 ```rust
 use std::rc::Rc;

@@ -1,12 +1,10 @@
-# Layout
+# 布局
 
-Alright, back to the drawing board on layout.
+好了，回到画板前重新设计布局。
 
-The most important thing about
-a persistent list is that you can manipulate the tails of lists basically
-for free:
+持久化链表最重要的一点，是你可以近乎免费地摆弄链表的尾部：
 
-For instance, this isn't an uncommon workload to see with a persistent list:
+举个例子，下面这种操作在持久化链表里并不少见：
 
 ```text
 list1 = A -> B -> C -> D
@@ -14,7 +12,7 @@ list2 = tail(list1) = B -> C -> D
 list3 = push(list2, X) = X -> B -> C -> D
 ```
 
-But at the end we want the memory to look like this:
+但最终我们希望内存看起来是这样的：
 
 ```text
 list1 -> A ---+
@@ -26,30 +24,25 @@ list2 ------> B -> C -> D
 list3 -> X ---+
 ```
 
-This just can't work with Boxes, because ownership of `B` is *shared*. Who
-should free it? If I drop list2, does it free B? With boxes we certainly would
-expect so!
+这用 Box 是根本做不到的，因为`B`的所有权是*共享*的。谁该来释放它呢？
+如果我丢弃 list2，它会释放 B 吗？如果用 box，我们当然会指望它这么干！
 
-Functional languages &mdash; and indeed almost every other language &mdash; get away with
-this by using *garbage collection*. With the magic of garbage collection, B will
-be freed only after everyone stops looking at it. Hooray!
+函数式语言 &mdash; 实际上几乎所有其他语言 &mdash; 都靠*垃圾回收*来绕开这个问题。
+有了垃圾回收的魔法，B 只会在所有人都不再看它之后才被释放。万岁！
 
-Rust doesn't have anything like the garbage collectors these languages have.
-They have *tracing* GC, which will dig through all the memory that's sitting
-around at runtime and figure out what's garbage automatically. Instead, all
-Rust has today is *reference counting*. Reference counting can be thought of
-as a very simple GC. For many workloads, it has significantly less throughput
-than a tracing collector, and it completely falls over if you manage to
-build cycles. But hey, it's all we've got! Thankfully, for our usecase we'll never run into cycles
-(feel free to try to prove this to yourself &mdash; I sure won't).
+Rust 没有这些语言所拥有的那种垃圾回收器。它们有*追踪式* GC，会在运行时
+翻遍所有还留着的内存，自动算出哪些是垃圾。而 Rust 今天所拥有的，只有
+*引用计数*。引用计数可以看作一种非常简单的 GC。在许多负载下，它的吞吐量
+显著低于追踪式回收器，而且一旦你造出了环，它就彻底歇菜。但没办法，我们
+就只有这个了！好在，对我们的用例来说，永远不会碰到环
+（欢迎你自己去证明这一点 &mdash; 反正我是不会证的）。
 
-So how do we do reference-counted garbage collection? `Rc`! Rc is just like
-Box, but we can duplicate it, and its memory will *only* be freed when *all*
-the Rc's derived from it are dropped. Unfortunately, this flexibility comes at
-a serious cost: we can only take a shared reference to its internals. This means
-we can't ever really get data out of one of our lists, nor can we mutate them.
+那么，我们要怎么做引用计数式的垃圾回收呢？用`Rc`！Rc 就像 Box 一样，
+但我们可以复制它，而它的内存*只有*在所有由它派生出来的 Rc 都被丢弃之后
+才会被释放。不幸的是，这种灵活性有着严重的代价：我们只能拿到指向其内部的
+共享引用。这意味着我们永远没法真正把数据从链表里取出来，也没法修改它们。
 
-So what's our layout gonna look like? Well, previously we had:
+那我们的布局会长什么样呢？之前我们有：
 
 ```rust ,ignore
 pub struct List<T> {
@@ -64,7 +57,7 @@ struct Node<T> {
 }
 ```
 
-Can we just change Box to Rc?
+我们能不能直接把 Box 换成 Rc？
 
 ```rust ,ignore
 // in third.rs
@@ -95,9 +88,8 @@ help: possible candidate is found in another module, you can import it into scop
   |
 ```
 
-Oh dang, sick burn. Unlike everything we used for our mutable lists, Rc is so
-lame that it's not even implicitly imported into every single Rust program.
-*What a loser*.
+哎哟，扎心了。跟我们写可变链表时用的那些东西不同，Rc 逊到连每个 Rust 程序
+都不会隐式导入它。*真是个卢瑟*。
 
 ```rust ,ignore
 use std::rc::Rc;
@@ -127,9 +119,9 @@ warning: field is never used: `next`
    |     ^^^^^^^^^^^^^
 ```
 
-Seems legit. Rust continues to be *completely* trivial to write. I bet we can just
-find-and-replace Box with Rc and call it a day!
+看着挺靠谱。Rust 依然*完全*不难写嘛。我打赌我们只要把 Box 全局替换成 Rc
+就可以收工了！
 
-...
+……
 
-No. No we can't.
+不。不，我们不能。
