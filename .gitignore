@@ -1,0 +1,5 @@
+/book/
+/lists/target/
+__pycache__/
+*.pyc
+/.superpowers/
