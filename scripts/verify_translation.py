@@ -9,13 +9,12 @@ FENCE_RE = re.compile(r"^((?:(?: {0,3}> ?)+| {0,3}))(`{3,}|~{3,})([^\n]*)(\n?)$"
 LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 REFERENCE_RE = re.compile(r"^\s*\[[^]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE)
+TRANSLATED_METADATA = {"book.toml"}
 
 
 def markdown_paths(root):
     return {
         path.relative_to(root).as_posix() for path in root.rglob("*.md")
-        if ".git" not in path.parts and ".superpowers" not in path.parts
-        and path.relative_to(root).as_posix() != "TRANSLATION_PLAN.md"
     }
 
 
@@ -56,12 +55,13 @@ def protected_links(text):
 
 def compare(source, target):
     errors = []
-    source_paths, target_paths = markdown_paths(source), markdown_paths(target)
+    source_md_root, target_md_root = source / "src", target / "src"
+    source_paths, target_paths = markdown_paths(source_md_root), markdown_paths(target_md_root)
     if source_paths != target_paths:
         errors.append(f"Markdown paths differ: missing={sorted(source_paths - target_paths)}, extra={sorted(target_paths - source_paths)}")
     for relative in sorted(source_paths & target_paths):
-        source_text = (source / relative).read_text(encoding="utf-8")
-        target_text = (target / relative).read_text(encoding="utf-8")
+        source_text = (source_md_root / relative).read_text(encoding="utf-8")
+        target_text = (target_md_root / relative).read_text(encoding="utf-8")
         try:
             source_fences, target_fences = fences(source_text, relative), fences(target_text, relative)
         except ValueError as error:
@@ -81,7 +81,7 @@ def compare(source, target):
     excluded_directories = {".git", ".github", ".superpowers", "book"}
     for path in source.rglob("*"):
         relative = path.relative_to(source)
-        if not path.is_file() or path.suffix.lower() == ".md" or path.name == ".gitignore" or any(part in excluded_directories for part in relative.parts) or relative.parts[:2] == ("lists", "target"):
+        if not path.is_file() or path.suffix.lower() == ".md" or path.name == ".gitignore" or relative.as_posix() in TRANSLATED_METADATA or any(part in excluded_directories for part in relative.parts) or relative.parts[:2] == ("lists", "target"):
             continue
         counterpart = target / relative
         if not counterpart.is_file():

@@ -38,6 +38,9 @@ class VerifyTranslationTests(unittest.TestCase):
             "src/one.md": "# One\n\nA [link](https://example.test/a) and ![diagram](assets/a.bin).\n\n```rust\nfn main() {}\n```\n",
             "src/two.md": "# Two\n\nSee [ref][r].\n\n[r]: https://example.test/ref\n\n~~~text\ncompiler output\n~~~\n",
             "src/assets/a.bin": b"asset bytes",
+            "lists/src/lib.rs": b"pub fn copied() {}\n",
+            "src/assets/a.gif": b"GIF89a copied",
+            "book.toml": "[book]\ntitle = \"source\"\n",
         }
 
     def test_prose_only_changes_pass(self):
@@ -114,6 +117,23 @@ class VerifyTranslationTests(unittest.TestCase):
         source["src/one.md"] += "\n    ```text\n    indented\n    ```\n"
         target["src/one.md"] += "\n    ```text\n    changed\n    ```\n"
         self.assertEqual(self.run_validator(source, target).returncode, 0)
+
+    def test_target_only_root_editorial_markdown_and_translated_metadata_pass(self):
+        source = self.base_files(); target = dict(source)
+        target["ATTRIBUTION.md"] = "# Attribution\n"
+        target["TRANSLATION_GLOSSARY.md"] = "# Glossary\n"
+        target["book.toml"] = "[book]\ntitle = \"translated\"\n"
+        self.assertEqual(self.run_validator(source, target).returncode, 0)
+
+    def test_changed_rust_asset_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["lists/src/lib.rs"] = b"pub fn changed() {}\n"
+        self.assert_failure(source, target, "Asset SHA-256 differs")
+
+    def test_changed_gif_asset_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/assets/a.gif"] = b"GIF89a changed"
+        self.assert_failure(source, target, "Asset SHA-256 differs")
 
 
 if __name__ == "__main__":
