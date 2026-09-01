@@ -20,5 +20,5 @@ mdbook build
 ---
 
 如果你愿意，也可以使用
-[GitBook](https://github.com/GitbookIO/gitbook), although GitBook
+[GitBook](https://github.com/GitbookIO/gitbook)，但 GitBook 可用于
 构建本项目。不过 GitBook 未获官方支持，因此兼容性不确定，也不构成本项目的支持范围。

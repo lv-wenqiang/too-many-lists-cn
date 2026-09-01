@@ -55,6 +55,8 @@ def protected_links(text):
 
 def compare(source, target):
     errors = []
+    if not (target / "book.toml").is_file():
+        errors.append("Missing target book.toml")
     source_md_root, target_md_root = source / "src", target / "src"
     source_paths, target_paths = markdown_paths(source_md_root), markdown_paths(target_md_root)
     if source_paths != target_paths:

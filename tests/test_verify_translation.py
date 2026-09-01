@@ -125,6 +125,11 @@ class VerifyTranslationTests(unittest.TestCase):
         target["book.toml"] = "[book]\ntitle = \"translated\"\n"
         self.assertEqual(self.run_validator(source, target).returncode, 0)
 
+    def test_missing_book_toml_fails_with_clear_diagnostic(self):
+        source = self.base_files(); target = dict(source)
+        del target["book.toml"]
+        self.assert_failure(source, target, "Missing target book.toml")
+
     def test_changed_rust_asset_fails(self):
         source = self.base_files(); target = dict(source)
         target["lists/src/lib.rs"] = b"pub fn changed() {}\n"
