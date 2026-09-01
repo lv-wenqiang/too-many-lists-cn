@@ -1,79 +1,79 @@
-# Attempting To Understand Stacked Borrows
+# 尝试理解 Stacked Borrows（堆叠借用）
 
-In the previous section we tried running our unsafe singly-linked queue under miri, and it said we had broken the rules of *stacked borrows*, and linked us some documentation.
+在上一节里，我们试着用 miri 跑了我们的不安全单向链表队列，它说我们违反了*Stacked Borrows（堆叠借用）*的规则，还给了我们一些文档链接。
 
-Normally I'd give a guided tour of the docs, but we're not really the target audience of that documentation. It's more designed for compiler developers and academics who are working on the semantics of Rust. 
+通常我会带你逛一遍文档，但我们其实并不是那份文档的目标读者。它更多是写给编译器开发者，以及研究 Rust 语义的学者看的。
 
-So I'm going to just give you the high level *idea* of "stacked borrows", and then give you a simple strategy for following the rules.
+所以我打算只把“Stacked Borrows（堆叠借用）”的大致*思路*讲给你听，然后给你一套遵守规则的简单策略。
 
-> **NARRATOR:** Stacked borrows are still "experimental" as a semantic model for Rust, so breaking these rules may not actually mean your program is "wrong". But unless you literally work on the compiler, you should just fix your program when miri complains. Better safe than sorry when it comes to Undefined Behaviour.
+> **旁白：**作为 Rust 的语义模型，Stacked Borrows（堆叠借用）目前仍是“实验性”的，所以违反这些规则未必真的意味着你的程序“错了”。不过除非你真的在给编译器干活，否则 miri 一抱怨你就该去修你的程序。碰上未定义行为，宁可谨慎也别后悔。
 
 
 
-# The Motivation: Pointer Aliasing
+# 动机：指针别名
 
-Before we get into *what* rules we've broken, it will help to understand *why* the rules exist in the first place. There are a few different motivating problems, but I think the most important one is *pointer aliasing*.
+在进入我们*违反了什么*规则之前，先理解这些规则*为什么*存在会很有帮助。促成它们的问题有好几个，但我认为最重要的一个是*指针别名*。
 
-We say two pointers *alias* when the pieces of memory they point to overlap. Just as someone who "goes by an alias" can be referred to by two different names, that overlapping piece of memory can be referred to by two different pointers. This can lead to problems.
+当两个指针所指向的内存片段有重叠时，我们就说它们互为*别名*。就像一个“用着化名”的人可以用两个不同的名字来称呼一样，那块重叠的内存也可以通过两个不同的指针来引用。这会带来问题。
 
-The compiler uses information about pointer aliasing to optimize accesses to memory, so if the information it has is *wrong* then the program will be miscompiled and do random garbage. 
+编译器会利用指针别名的信息来优化对内存的访问，所以如果它掌握的信息是*错的*，程序就会被错误地编译，干出随机的垃圾事情。
 
-> **NARRATOR:** Practically speaking, aliasing is more concerned with memory accesses than the pointers themselves, and only really matters when one of the accesses is mutating. Pointers are emphasized because they're a convenient thing to attach rules to.
+> **旁白：**实际上，别名关心的更多是内存*访问*而非指针本身，而且只有当其中一次访问是修改性的时候才真正要紧。之所以强调指针，是因为把规则挂在指针上比较方便。
 
-To understand why pointer aliasing information is important, let's consider *The Parable of the Tiny Angry Man*. 
-
-----
-
-Michiel was looking through their bookshelf one day when they saw a book they didn't remember. They pulled it from the bookcase and looked at the cover. 
-
-"Oh yes, my old copy of *War and Peace*, a book I definitely have read. I loved the part with all the Peace."
-
-Suddenly there was a knock at the door. Michiel returned the book to its shelf and opened the door -- it was their sworn nemesis **Hamslaw**. As Hamslaw prepared a devastating remark about Michiel's clearly inferior codegolfing skills, they sensed an opening: 
-
-"Hey Hamslaw, have you ever read War and Peace?"
-
-"Pfft, no one's *actually* read War and Peace."
-
-"Well I have, look it's right there in my bookcase, which *obviously* means I've read it."
-
-Hamslaw couldn't believe it. Her face shifted from its usual smug demeanor to an iron mask of rage and determination. Hamslaw pushed Michiel aside and power-walked to the book shelf, cleaving the tome from its resting place with the fury of a thousand Valkyries. She turned the ancient text over in her hands, and the instant she saw the cover she began to shake.
-
-Michiel prepared to boast of their clearly unparalleled brilliance, but was interrupted by the sudden laughter of Hamslaw.
-
-"This isn't War and Peace, this is War and *Feet*!"
-
-Tears were rolling down Hamslaw's face. This was clearly the greatest moment of her life.
-
-"N-no! I just looked at it!"
-
-They grabbed the book from Hamslaw and checked the cover. Indeed, the word "Peace" had been scratched out and replaced with "Feet". Michiel was mortified. This was clearly the worst moment of their life.
-
-They fell to their knees and stared blankly at the bookcase. How could this have happened? They had checked the cover only a moment ago!
-
-And then they saw a bit of motion in the bookcase. It was a tiny man. A tiny many with the angriest scowl Michiel had ever seen. The tiny man flipped Michiel off and mouthed the words "no one will believe you" and disappeared back between the books.
-
-Michiel's plan *had* been perfect, but they had failed to account for the possibility of a tiny angry man with a sharpie and the desire for destruction. They thought they knew what the cover of the book said, and they thought that no one could have possibly changed it. But alas, they were wrong.
-
-Hamslaw was already working on a zine commemorating her incredible victory &mdash; Michiel's reputation at the local Internet Cafe would never recover.
+要理解为什么指针别名信息如此重要，我们来看看*小小愤怒男的寓言*。
 
 ----
 
-No one wants to be like Michiel, but no one wants to live in constant fear of the tiny angry man either. We want to know when the tiny angry man could be playing tricks on us. When he is, we will be very careful and paranoid about checking everything before we use it. But when the tiny angry man is gone, we want to be able to remember things.
+某天 Michiel 在翻自己的书架时，看到一本不记得的书。Michiel 把它从书柜里抽出来，看了看封面。
 
-That's the (very simplified) crux of pointer aliasing: when can the compiler assume it's safe to "remember" (cache) values instead of loading them over and over? To know that, the compiler needs to know whenever there *could* be little angry men mutating the memory behind your back.
+“哦对，我那本旧的*战争与和平*，这本书我绝对读过。我最喜欢里面讲和平的部分了。”
 
-> **NARRATOR:** the compiler also uses this information to cache stores, which just means it can avoid committing things to memory if it thinks no one will notice. In this case the problem is still tiny angry men, but they only need to read the memory for it to be a problem.
+忽然有人敲门。Michiel 把书放回书架，打开门——门外是宿敌 **Hamslaw**。就在 Hamslaw 准备就 Michiel 明显低劣的代码高尔夫技巧放出一句毁灭性评论时，Michiel 嗅到了一个机会：
+
+“嘿 Hamslaw，你读过《战争与和平》吗？”
+
+“切，根本没人*真的*读过《战争与和平》。”
+
+“我就读过啊，你看，它就在我书柜里，这*显然*说明我读过。”
+
+Hamslaw 简直不敢相信。她的脸从惯常的得意神色，变成了一副由愤怒和决心铸成的铁面。Hamslaw 推开 Michiel，大步走向书架，带着一千个女武神的怒火把那本大部头从它的安息之处劈了出来。她把这本古老的典籍在手里翻过来，就在看到封面的那一瞬间，她开始发抖。
+
+Michiel 正准备吹嘘自己那显然无与伦比的才智，却被 Hamslaw 突如其来的大笑打断了。
+
+“这不是《战争与和平》，这是《战争与*脚*》！”
+
+眼泪从 Hamslaw 脸上滚落。这显然是她一生中最伟大的时刻。
+
+“不——不可能！我刚刚才看过它！”
+
+Michiel 从 Hamslaw 手里抢过书，检查封面。果然，“和平”那个词被划掉了，换成了“脚”。Michiel 羞愧欲死。这显然是 Michiel 一生中最糟糕的时刻。
+
+Michiel 跪倒在地，茫然地盯着书柜。这怎么可能发生？明明片刻之前才检查过封面啊！
+
+接着 Michiel 看到书柜里有个小小的动静。是一个小人。一个小人，脸上挂着 Michiel 见过的最愤怒的怒容。那个小人朝 Michiel 竖了个中指，无声地做出“没人会信你的”的口型，然后消失在书堆之间。
+
+Michiel 的计划*本来*完美无缺，只是没能把“可能存在一个拿着记号笔、一心想搞破坏的小小愤怒男”这种可能性算进去。Michiel 以为自己知道书的封面上写着什么，也以为不可能有人改动它。可惜啊，Michiel 错了。
+
+Hamslaw 已经开始张罗一本纪念她这场惊人胜利的小册子了 &mdash; Michiel 在当地网吧的名声再也回不来了。
+
+----
+
+没人想变成 Michiel，但也没人想活在对小小愤怒男的持续恐惧之中。我们想知道小小愤怒男什么时候可能在耍我们。在那种时候，我们会非常小心、非常多疑，用之前把每样东西都检查一遍。可当小小愤怒男不在场时，我们又希望自己能把东西记住。
+
+这就是指针别名（经过大幅简化）的关键所在：编译器什么时候可以假定“记住”（缓存）某些值、而不必一遍遍重新加载它们是安全的？要知道这一点，编译器就需要知道什么时候*可能*有小愤怒男在背地里改动内存。
+
+> **旁白：**编译器也会用这些信息来缓存写入，也就是说如果它认为没人会察觉，它就可以不把东西真正提交到内存里。这种情况下的问题仍然是小小愤怒男，只不过这次他们只要*读*内存就足以造成问题了。
 
 
 
 
 
 
-# Safe Stacked Borrows
+# 安全的 Stacked Borrows（堆叠借用）
 
-Ok so we want the compiler to have good pointer aliasing information, can we do that? Well, seemingly Rust is *designed* for it. Mutable references aren't aliased by definition, and although shared references *can* alias eachother, they can't mutate. Perfect! Ship it!
+好，我们希望编译器掌握良好的指针别名信息，这能做到吗？嗯，Rust 看起来就是为此*设计*的。可变引用按定义就不存在别名，而共享引用虽然*可以*互为别名，却不能修改。完美！发布吧！
 
-Except it's more complicated than that. We can "reborrow" mutable pointers like this:
+只可惜事情没那么简单。我们可以像这样对可变指针进行“重借用”：
 
 ```rust
 let mut data = 10;
@@ -86,9 +86,9 @@ let ref2 = &mut *ref1;
 println!("{}", data);
 ```
 
-The compiles and runs fine. What's the deal? 
+这段代码能编译也能正常运行。这是怎么回事？
 
-Well we can see what's going on by swapping the two uses:
+我们把这两处使用交换一下，就能看出端倪了：
 
 ```rust ,ignore
 let mut data = 10;
@@ -118,94 +118,94 @@ For more information about this error, try `rustc --explain E0503`.
 error: could not compile `playground` due to previous error
 ```
 
-It's suddenly a compiler error!
+突然就变成编译错误了！
 
-When we reborrow a mutable pointer, the original pointer can't be used anymore until the borrower is done with it (no more uses). 
+当我们重借用一个可变指针时，在借用方用完它（不再有任何使用）之前，原来那个指针就不能再被使用了。
 
-In the code that works, there's a nice little nesting of the uses. We reborrow the pointer, use the new pointer for a while, and then stop using it before using the older pointer again. In the code that *doesn't* work, that doesn't happen. We just interleave the uses arbitrarily.
+在那段能跑通的代码里，各处使用漂亮地嵌套着。我们重借用了指针，用了新指针一阵子，然后在再次使用旧指针之前停止使用新指针。而在*跑不通*的那段代码里，情况就不是这样了。我们只是把两者的使用随意交错在一起。
 
-This is how we can have reborrows and still have aliasing information: all of our reborrows clearly nest, so we can consider only one of them "live" at any given time.
+这就是我们既能进行重借用、又能保有别名信息的办法：我们所有的重借用都清清楚楚地嵌套着，所以在任意给定时刻，我们只需要认为其中一个是“活的”。
 
-Hey, you know what's a great way to represent cleanly nested things? A stack. A stack of borrows.
+嘿，你知道有什么东西特别适合表示干净嵌套的结构吗？栈。一个由借用组成的栈。
 
-Oh hey it's *Stacked Borrows*!
+哦嘿，这不就是*Stacked Borrows（堆叠借用）*嘛！
 
-Whatever's at the top of the borrow stack is "live" and knows it's effectively unaliased. When you reborrow a pointer, the new pointer is pushed onto the stack, becoming *the* live pointer. When you use an older pointer it's brought back to life by popping everything on the borrow stack above it. At this point the pointer "knows" it was reborrowed and that the memory might have been modified, but that it once more has exclusive access -- no need to worry about little angry men.
+处在借用栈栈顶的那个就是“活的”，并且知道自己实际上没有别名。当你重借用一个指针时，新指针会被压入栈中，成为*那个*活的指针。当你使用一个较老的指针时，它会被复活——办法是把借用栈上位于它之上的东西统统弹出。此时这个指针“知道”自己曾被重借用过、内存可能已被修改，但它重新获得了独占访问权——不用担心小愤怒男了。
 
-So it's actually *always* ok to access a reborrowed pointer, because we can always pop everything above it. The real trouble is accessing a pointer that has already been popped off of the borrow stack -- then you've messed up.
+所以访问一个被重借用过的指针其实*总是*没问题的，因为我们总能把它上面的东西弹掉。真正的麻烦在于访问一个*已经*被弹出借用栈的指针——那你就搞砸了。
 
-Thankfully the design of the borrowchecker ensures that safe Rust programs follow these rules, as we saw in the above example, but the compiler generally views this problem "backwards" from the stacked borrows perspective. Instead of saying using `ref1` invalidates `ref2`, it insists that `ref2` *must* be valid for all its uses, and that `ref1` is the one messing things up by going out of turn.
+谢天谢地，借用检查器的设计确保了安全 Rust 程序会遵守这些规则，就像我们在上面例子里看到的那样；不过从 Stacked Borrows（堆叠借用）的视角看，编译器通常是“反着”看待这个问题的。它不说使用`ref1`会让`ref2`失效，而是坚持`ref2`在它所有的使用点上都*必须*有效，是`ref1`不守规矩、插队捣乱。
 
-Hence "cannot use `*ref1` because it was mutably borrowed". It's the same result (especially with non-lexical lifetimes), but framed in a way that's probably more intuitive.
+于是就有了“无法使用`*ref1`，因为它已被可变借用”。结果是一样的（尤其是在有了非词法生命周期之后），只是换了一种大概更符合直觉的表述方式。
 
-But the borrowchecker can't help us when we start using unsafe pointers!
-
-
+可一旦我们开始使用不安全指针，借用检查器就帮不了我们了！
 
 
 
-# Unsafe Stacked Borrows
 
-So we want to somehow have a way for unsafe pointers to participate in this stacked borrows system, even though the compiler can't track them properly. And we also want the system to be fairly permissive so that it's not *too* easy to mess it up and cause UB.
 
-That's a hard problem, and I don't know how to solve it, but the folks who worked on Stacked Borrows came up with something plausible, and miri tries to implement it.
+# 不安全的 Stacked Borrows（堆叠借用）
 
-The very high-level concept is that when you convert a reference (or any other safe pointer) into an raw pointer it's *basically* like taking a reborrow. So now the raw pointer is allowed to do whatever it wants with that memory, and when the reborrow expires it's just like when that happens with normal reborrows.
+所以我们想找到某种办法，让不安全指针也能参与到这套 Stacked Borrows（堆叠借用）体系中来，尽管编译器没法好好追踪它们。同时我们还希望这套体系足够宽松，别让人*太*容易搞砸并引发未定义行为。
 
-But the question is, when does that reborrow expire? Well, probably a good time to expire it is when you start using the original reference again. Otherwise things aren't a nice nested stack.
+这是个难题，我不知道该怎么解，不过研究 Stacked Borrows（堆叠借用）的那些人想出了一套看起来说得通的方案，而 miri 试图把它实现出来。
 
-But wait, you can turn a raw pointer *into* a reference! And you can copy raw pointers! What if you go `&mut -> *mut -> &mut -> *mut` and then access the first `*mut`? How the heck do the stacked borrows work then?
+最粗略的概念是：当你把一个引用（或任何其他安全指针）转换成原始指针时，这*基本上*就像是做了一次重借用。于是现在这个原始指针可以对那块内存为所欲为，而当这次重借用过期时，情况就和普通重借用过期时一样。
 
-I genuinely don't know! That's why things are complicated. In fact they're *extra* complicated because stacked borrows are *trying* to be more permissive and let more unsafe code work the way you'd expect it to. This is why I run things under miri to try to help me catch mistakes.
+但问题是，这次重借用什么时候过期呢？嗯，一个不错的过期时机大概是你重新开始使用原来那个引用的时候。否则这些东西就构不成一个漂亮的嵌套栈了。
 
-In fact, this messiness is why there is an extra-experimental extra-strict mode of miri: `-Zmiri-tag-raw-pointers`.
+可是等等，你还能把原始指针转*回*引用！而且你还能复制原始指针！要是你搞出个`&mut -> *mut -> &mut -> *mut`，然后去访问第一个`*mut`呢？那时候堆叠借用又该怎么算？
 
-To enable it, we need to pass it via a MIRIFLAGS environment variable like this:
+我是真不知道！这就是事情复杂的原因。实际上它还*格外*复杂，因为 Stacked Borrows（堆叠借用）*试图*变得更宽松，让更多不安全代码能按你期望的方式工作。这也正是我要在 miri 下跑东西、好帮我抓错的原因。
+
+事实上，正是因为这种混乱，miri 才有了一个格外实验性、格外严格的模式：`-Zmiri-tag-raw-pointers`。
+
+要启用它，我们需要像这样通过 MIRIFLAGS 环境变量传进去：
 
 ```text
 MIRIFLAGS="-Zmiri-tag-raw-pointers" cargo +nightly-2022-01-21 miri test
 ```
 
-Or like this on Windows, where you need to just set the variable globally:
+在 Windows 上则是这样，你需要把这个变量设成全局的：
 
 ```text
 $env:MIRIFLAGS="-Zmiri-tag-raw-pointers"
 cargo +nightly-2022-01-21 miri test
 ```
 
-We'll generally be trying to conform to this extra-strict mode just to be *extra* confident in our work. It's also in some sense "simpler", so it's actually better for messing around and getting an intuition for stacked borrows.
+我们通常会尽量遵循这个格外严格的模式，好让自己对成果*格外*有信心。它在某种意义上也“更简单”，所以其实更适合用来瞎折腾、培养对堆叠借用的直觉。
 
 
 
 
-# Managing Stacked Borrows
+# 管理 Stacked Borrows（堆叠借用）
 
-So when using raw pointers we're going to try to stick to a heuristic that's simple and blunt and will hopefully have a large margin of error: 
+所以在使用原始指针时，我们打算坚持一条简单粗暴、但但愿留有很大容错余地的经验法则：
 
-**Once you start using raw pointers, try to ONLY use raw pointers.**
+**一旦你开始使用原始指针，就尽量只使用原始指针。**
 
-This makes it as unlikely as possible to accidentally lose the raw pointer's "permission" to access the memory.
+这能把“不小心弄丢原始指针访问内存的‘许可’”的可能性压到最低。
 
-> **NARRATOR:** this is oversimplified in two regards:
+> **旁白：**这里在两个方面被过分简化了：
 >
-> 1. Safe pointers often assert more properties than just aliasing: the memory is allocated, it's aligned, it's large enough to fit the type of the pointee, the pointee is properly initialized, etc. So it's even more dangerous to wildly throw them around when things are in a dubious state.
+> 1. 安全指针往往断言的不只是别名性质：内存是已分配的、是对齐的、大到足以容纳被指对象的类型、被指对象已被正确初始化，等等。所以在状态可疑的时候到处乱扔它们就更危险了。
 >
-> 2. Even if you stay in raw pointer land, you can't just wildly alias any memory. Pointers are conceptually tied to specific "allocations" (which can be as granular as a local variable on the stack), and you're not supposed to take a pointer from one allocation, offset it, and then access memory in a different allocation. If this was allowed, there would *always* be the threat of tiny angry men *everywhere*. This is part of the reason "pointers are just integers" is a *problematic* viewpoint.
+> 2. 就算你一直待在原始指针的地界里，也不能随便让任意内存互为别名。指针在概念上是和特定的“分配”绑定的（“分配”可以细到栈上的一个局部变量），你不应该拿着来自某个分配的指针、做个偏移，然后去访问另一个分配里的内存。如果这被允许，那就会*到处*都*始终*笼罩着小愤怒男的威胁。这也正是“指针不过是整数”这一观点*有问题*的原因之一。
 
-Now, we still want safe references in our *interface*, because we want to build a nice *safe abstraction* so the user of our list doesn't have to know or worry about. 
+不过，我们仍然希望*接口*里用的是安全引用，因为我们想构建一层漂亮的*安全抽象*，好让链表的使用者不必知道、也不必操心这些。
 
-So what we're going to do is:
+所以我们要做的是：
 
-1. At the start of a method, use the input references to get our raw pointers
-2. Do our best to only use unsafe pointers from this point on
-3. Convert our raw pointers back to safe pointers at the end if needed
+1. 在方法开头，用传入的引用拿到我们的原始指针
+2. 从这里开始，尽最大努力只使用不安全指针
+3. 如果需要，在结尾再把原始指针转换回安全指针
 
-But the fields of our types are private so we're going to keep those *entirely* as raw pointers.
+而我们类型的字段是私有的，所以我们会把它们*完全*保持为原始指针。
 
-In fact, part of the big mistake we made was continuing to use Box! Box has a special annotation in it that tells the compiler "hey this is a lot like `&mut`, because it uniquely owns that pointer". Which is true!
+事实上，我们犯的那个大错，有一部分就是继续使用了 Box！Box 内部有一个特殊的标注，它告诉编译器“嘿，这东西很像`&mut`，因为它独占地拥有那个指针”。而这是真的！
 
-But the raw pointer we were keeping to the end of the list was pointing into a Box, so whenever we access the Box normally we're probably invalidating that raw pointer's "reborrow"! ☠
+但我们保存的那个指向链表末端的原始指针，指的正是 Box 的内部，所以每当我们正常地访问那个 Box，我们大概就让那个原始指针的“重借用”失效了！☠
 
-In the next section we'll return to our true form and hit our heads against a bunch of examples.
+在下一节里，我们会回归本色，拿脑袋去撞一堆例子。
 
 
