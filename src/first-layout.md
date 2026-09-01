@@ -1,25 +1,14 @@
-# Basic Data Layout
+# 基本布局
 
-Alright, so what's a linked list? Well basically, it's a bunch of pieces of data
-on the heap (hush, kernel people!) that point to each other in sequence. Linked
-lists are something procedural programmers shouldn't touch with a 10-foot pole,
-and what functional programmers use for everything. It seems fair, then, that we
-should ask functional programmers for the definition of a linked list. They will
-probably give you something like the following definition:
+好吧，所以链表是什么东西呢？大致上说，它是一大片相互指向的数据，以顺序连接起来（嘘，Linux内核！）。链表是过程式程序员应该用一切代价避免的东西，而函数程序员则在所有情况下使用它。那么，看起来向函数式程序员询问链表的定义是很公平的。他们可能会给你类似这样的定义：
 
 ```haskell
 List a = Empty | Elem a (List a)
 ```
 
-Which reads approximately as "A List is either Empty or an Element followed by a
-List". This is a recursive definition expressed as a *sum type*, which is a
-fancy name for "a type that can have different values which may be different
-types". Rust calls sum types `enum`s! If you're coming from a C-like language,
-this is exactly the enum you know and love, but in overdrive. So let's
-transcribe this functional definition into Rust!
+它可以大致读成“一个列表要么是空的，要么是一个元素接着一个列表”。这是用一个复合类型（sum type）表达的递归定义，而复合类型只是“一个可以拥有多种类型的值的类型”的酷炫叫法。Rust把复合类型称作`enum`！如果你是从一个C系语言过来的，那么这正是你所熟知并热爱的枚举类型，但是强大了许多。让我们把这个函数式的链表定义转录到Rust吧！
 
-For now we'll avoid generics to keep things simple. We'll only support
-storing signed 32-bit integers:
+现在为了保持说明简单，我们会避开泛型。我们暂时只支持有符号的32位整数：
 
 ```rust ,ignore
 // in first.rs
@@ -31,7 +20,7 @@ pub enum List {
 }
 ```
 
-*phew*, I'm swamped. Let's just go ahead and compile that:
+呼，这一点也不麻烦嘛。我们继续下去编译它吧：
 
 ```text
 > cargo build
@@ -48,37 +37,35 @@ error[E0072]: recursive type `first::List` has infinite size
   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `first::List` representable
 ```
 
-Well. I don't know about you, but I certainly feel betrayed by the functional
-programming community.
+不！！！！函数式程序员欺骗了我们！它让我们做了*不合法*的东西！这是圈套！
 
-If we actually check out the error message (after we get over the whole
-betrayal thing), we can see that rustc is actually telling us exactly
-how to solve this problem:
+……
+
+我冷静下来了。你冷静了么？如果我们真正去检查错误消息（而不是像我们中的某些人一样，准备逃出这个国家），我们就会发现rustc实际上在告诉我们如何解决这个问题：
 
 > insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `first::List` representable
-
-Alright, `box`. What's that? Let's google `rust box`...
+好吧，`box`。那是什么东西？让我们 google `rust box`……
 
 > [std::boxed::Box - Rust](https://doc.rust-lang.org/std/boxed/struct.Box.html)
 
-Lesse here...
+看看接下来是啥……
 
 > `pub struct Box<T>(_);`
 >
 > A pointer type for heap allocation.
 > See the [module-level documentation](https://doc.rust-lang.org/std/boxed/) for more.
 
-*clicks link*
+*点击链接*
 
-> `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of scope.
+> `Box<T>`，或被随意的称为`box`，提供了Rust中最简单的堆内存分配的形式。Box提供了当次内存分配的所有权，并在退出作用域时销毁存放的内容。
 >
-> Examples
+> 示例
 >
-> Creating a box:
+> 创建一个box
 >
 > `let x = Box::new(5);`
 >
-> Creating a recursive data structure:
+> 创建一个递归数据结构：
 >
 ```rust
 #[derive(Debug)]
@@ -95,19 +82,17 @@ fn main() {
 }
 ```
 >
-> This will print `Cons(1, Box(Cons(2, Box(Nil))))`.
+> 这会打印 `Cons(1, Box(Cons(2, Box(Nil))))`.
 >
-> Recursive structures must be boxed, because if the definition of Cons looked like this:
+> 递归的结构必须使用box包装，因为如果Cons的定义如下这样：
 >
 > `Cons(T, List<T>),`
 >
-> It wouldn't work. This is because the size of a List depends on how many elements are in the list, and so we don't know how much memory to allocate for a Cons. By introducing a Box, which has a defined size, we know how big Cons needs to be.
+> 是不会工作的。这是因为List的大小由其中的元素数量所决定，所以我们无法决定为一个Cons分配多少内存。通过引入一个具有固定大小的Box，我们才知道Cons需要占用多少内存。
 
-Wow, uh. That is perhaps the most relevant and helpful documentation I have ever seen. Literally the first thing in the documentation is *exactly what we're trying to write, why it didn't work, and how to fix it*.
+哇哦。这或许是我见过的最相关最有帮助的文档了。在里面的第一个东西就是*我们正在尝试写的东西，为什么它不能工作，以及如何修复它*。好耶，文档。
 
-Dang, docs rule.
-
-Ok, let's do that:
+OK，我们来完成它：
 
 ```rust ,ignore
 pub enum List {
@@ -122,11 +107,11 @@ pub enum List {
    Finished dev [unoptimized + debuginfo] target(s) in 0.22s
 ```
 
-Hey it built!
+嘿，它成功编译了！
 
-...but this is actually a really foolish definition of a List, for a few reasons.
+……但这实际上是一个非常蠢的List的定义，出于以下的一些原因。
 
-Consider a list with two elements:
+考虑一个拥有两个元素的列表：
 
 ```text
 [] = Stack
@@ -135,25 +120,20 @@ Consider a list with two elements:
 [Elem A, ptr] -> (Elem B, ptr) -> (Empty, *junk*)
 ```
 
-There are two key issues:
+这里有两个关键问题：
 
-* We're allocating a node that just says "I'm not actually a Node"
-* One of our nodes isn't heap-allocated at all.
+* 我们创建了一个“实际上不是个节点”的节点
+* 其中的一个节点根本没分配在堆里
 
-On the surface, these two seem to cancel each-other out. We heap-allocate an
-extra node, but one of our nodes doesn't need to be heap-allocated at all.
-However, consider the following potential layout for our list:
+在表面上，这两个问题似乎相互抵消。我们分配了一个多余的节点，但有一个节点完全无需在堆里分配。然而，考虑我们链表的一个潜在的内存布局：
 
 ```text
 [ptr] -> (Elem A, ptr) -> (Elem B, *null*)
 ```
 
-In this layout we now unconditionally heap allocate our nodes. The
-key difference is the absence of the *junk* from our first layout. What is
-this junk? To understand that, we'll need to look at how an enum is laid out
-in memory.
+在这个布局里，我们在堆里分配所有的元素。和第一个布局相比，核心的区别是多余的*垃圾*的消失。这个垃圾到底是什么？为了理解它，我们需要看一看enum是如何在内存中布局的。
 
-In general, if we have an enum like:
+通常的，如果我们有像这样的一个enum：
 
 ```rust ,ignore
 enum Foo {
@@ -164,23 +144,13 @@ enum Foo {
 }
 ```
 
-A Foo will need to store some integer to indicate which *variant* of the enum it
-represents (`D1`, `D2`, .. `Dn`). This is the *tag* of the enum. It will also
-need enough space to store the *largest* of `T1`, `T2`, .. `Tn` (plus some extra
-space to satisfy alignment requirements).
+一个Foo需要保存一个整数，来指出它实际表示的是哪一个*变体*（`D1`, `D2`, .. `Dn`）。这是enum的*标签*（tag）。它也需要足够大的空间，来存储`T1`, `T2`, .. `Tn`中的最大元素（以及用来满足内存对齐要求的附加空间）。
 
-The big takeaway here is that even though `Empty` is a single bit of
-information, it necessarily consumes enough space for a pointer and an element,
-because it has to be ready to become an `Elem` at any time. Therefore the first
-layout heap allocates an extra element that's just full of junk, consuming a
-bit more space than the second layout.
+一个很大的缺陷是，尽管`Empty`只存储了一位的信息，它却消耗了一个指针和一个元素的内存空间，因为它要随时准备成为一个`Elem`。因此第一种布局在堆里分配了一个充满垃圾的多余元素，比第二种布局消耗更多的空间。
 
-One of our nodes not being allocated at all is also, perhaps surprisingly,
-*worse* than always allocating it. This is because it gives us a *non-uniform*
-node layout. This doesn't have much of an appreciable effect on pushing and
-popping nodes, but it does have an effect on splitting and merging lists.
+让我们的一个元素不在堆中分配，或许也比所有元素都在堆中分配更糟。这是因为它给了我们一个*不一致的*节点内存布局。在推入和弹出节点时这并无问题，但在分割和合并列表时确实会有影响。
 
-Consider splitting a list in both layouts:
+考虑在两种布局里分别分割一个列表：
 
 ```text
 layout 1:
@@ -204,17 +174,11 @@ split off C:
 [ptr] -> (Elem C, *null*)
 ```
 
-Layout 2's split involves just copying B's pointer to the stack and nulling
-the old value out. Layout 1 ultimately does the same thing, but also has to
-copy C from the heap to the stack. Merging is the same process in reverse.
+布局2的分割仅仅涉及将B的指针拷贝到栈上，并把原值设置为null。布局1最终还是做了同一件事，但是还得把C从堆中拷贝到栈中。反过来执行上述操作，就是合并列表。
 
-One of the few nice things about a linked list is that you can construct the
-element in the node itself, and then freely shuffle it around lists without
-ever moving it. You just fiddle with pointers and stuff gets "moved". Layout 1
-trashes this property.
+链表的优点之一就是可以在节点中构建元素，然后在列表中随意调换它的位置而不需移动它的内存。你只需要调整指针，元素就被“移动了”。第一个布局毁掉了这个特点。
 
-Alright, I'm reasonably convinced Layout 1 is bad. How do we rewrite our List?
-Well, we could do something like:
+好吧，我现在很确信布局1是糟糕的。我们要怎么重写List呢？可以这么做：
 
 ```rust ,ignore
 pub enum List {
@@ -224,18 +188,11 @@ pub enum List {
 }
 ```
 
-Hopefully this seems like an even worse idea to you. Most notably, this really
-complicates our logic, because there is now a completely invalid state:
-`ElemThenNotEmpty(0, Box(Empty))`. It also *still* suffers from non-uniformly
-allocating our elements.
+或许你觉得这看起来更糟了。一个问题是，这让逻辑变得更复杂了。具体地说，现在出现了一个完全无效的状态：`ElemThenNotEmpty(0, Box(Empty))`。它也*仍*被内存分配模式不一致的问题所困扰。
 
-However it does have *one* interesting property: it totally avoids allocating
-the Empty case, reducing the total number of heap allocations by 1. Unfortunately,
-in doing so it manages to waste *even more space*! This is because the previous
-layout took advantage of the *null pointer optimization*.
+不过它确实有*一个*有趣的特性：它完全避免了在堆里分配Empty，让堆内存分配的数量减少了1。不幸的是，这么做反而浪费了*更多空间*！因为之前的布局利用了*空指针优化*。
 
-We previously saw that every enum has to store a *tag* to specify which variant
-of the enum its bits represent. However, if we have a special kind of enum:
+我们之前了解到每个enum需要存储一个*标签*，来指明它代表哪一个enum的*变体*。然而，如果我们有如下特殊类型的enum：
 
 ```rust,ignore
 enum Foo {
@@ -244,31 +201,16 @@ enum Foo {
 }
 ```
 
-the null pointer optimization kicks in, which *eliminates the space needed for
-the tag*. If the variant is A, the whole enum is set to all `0`'s. Otherwise,
-the variant is B. This works because B can never be all `0`'s, since it contains
-a non-zero pointer. Slick!
+空指针优化就会发挥作用，*消除标签所占用的内存空间*。如果变体是A，那整个enum就被设置为0。否则，变体是B。这可以工作，因为B存放了一个非空指针，永远不可能为0。真聪明！
 
-Can you think of other enums and types that could do this kind of optimization?
-There's actually a lot! This is why Rust leaves enum layout totally unspecified.
-There are a few more complicated enum layout optimizations that Rust will do for
-us, but the null pointer one is definitely the most important!
-It means `&`, `&mut`, `Box`, `Rc`, `Arc`, `Vec`, and
-several other important types in Rust have no overhead when put in an `Option`!
-(We'll get to most of these in due time.)
+ 你还能想到能进行这种优化的enum和类型么？实际上有很多！这就是为什么Rust没有详细描述enum的内存布局。悲伤的是，现在实现的优化只有空指针优化——尽管它很重要！这意味着`&`, `&mut`, `Box`, `Rc`, `Arc`, `Vec`，以及其他一些Rust中的重要类型，在放到一个 `Option` 中时没有多余开销！（上面这些概念的大部分，我们在适当的时候都会接触到）
 
-So how do we avoid the extra junk, uniformly allocate, *and* get that sweet
-null-pointer optimization? We need to better separate out the idea of having an
-element from allocating another list. To do this, we have to think a little more
-C-like: structs!
 
-While enums let us declare a type that can contain *one* of several values,
-structs let us declare a type that contains *many* values at once. Let's break
-our List into two types: A List, and a Node.
+所以我们要如何避免多余垃圾，统一的分配内存，*并且*从空指针优化中获益呢？我们需要更好的将存储元素和分配列表这两个想法分开。要做到它，我们该像C语言看齐：struct！
 
-As before, a List is either Empty or has an element followed by another List.
-By representing the "has an element followed by another List" case by an
-entirely separate type, we can hoist the Box to be in a more optimal position:
+enum让我们定义了一种可以存放多个变体中的一个的类型，而struct则让我们定义可以同时存放多种元素的类型。让我们把List分成两个类型吧：一个List，和一个Node。
+
+和之前一样，一个List要么是Empty，要么是一个元素跟着一个List。不过，要通过另外一种类型来表示“一个元素跟着一个List”，我们可以将Box提升到一个更理想的位置：
 
 ```rust ,ignore
 struct Node {
@@ -282,15 +224,13 @@ pub enum List {
 }
 ```
 
-Let's check our priorities:
+让我们检查各个条目：
 
-* Tail of a list never allocates extra junk: check!
-* `enum` is in delicious null-pointer-optimized form: check!
-* All elements are uniformly allocated: check!
+* 列表末尾不分配多余垃圾：通过！
+* `enum` 享受美妙的空指针优化：通过！
+* 所有元素的内存分配一致：通过！
 
-Alright! We actually just constructed exactly the layout that we used to
-demonstrate that our first layout (as suggested by the official Rust
-documentation) was problematic.
+好的！我们创建的正是用来指明第一种内存布局（官方Rust文档中所建议的那种）有问题的第二种内存布局。
 
 ```text
 > cargo build
@@ -308,12 +248,8 @@ warning: private type `first::Node` in public interface (error E0446)
 
 :(
 
-Rust is mad at us again. We marked the `List` as public (because we want people
-to be able to use it), but not the `Node`. The problem is that the internals of
-an `enum` are totally public, and we're not allowed to publicly talk about
-private types. We could make all of `Node` totally public, but generally in Rust
-we favour keeping implementation details private. Let's make `List` a struct, so
-that we can hide the implementation details:
+Rust又对我们发飙了。我们将`List`标记为public（因为我们想让其他人使用它），却没有公开`Node`。问题在于，`enum`的内部是完全公开的，所以在其中包含内部类型是不允许的。我们可以让整个`Node`都成为公开的，但是通常在Rust中，我们倾向于让实现细节私有化。让我们把`List`改造成一个struct，这样我们就可以隐藏实现细节：
+
 
 ```rust ,ignore
 pub struct List {
@@ -331,8 +267,7 @@ struct Node {
 }
 ```
 
-Because `List` is a struct with a single field, its size is the same as that
-field. Yay zero-cost abstractions!
+因为`List`是一个单值的struct，它的大小和该值完全相同。零代价抽象超赞！
 
 ```text
 > cargo build
@@ -371,8 +306,4 @@ warning: field is never used: `next`
 
 ```
 
-Alright, that compiled! Rust is pretty mad, because as far as it can tell,
-everything we've written is totally useless: we never use `head`, and no one who
-uses our library can either since it's private. Transitively, that means Link
-and Node are useless too. So let's solve that! Let's implement some code for our
-List!
+好吧，终于编译了！Rust非常生气，因为我们现在写的东西完全无用：我们从不使用`head`，并且因为它是私有的；使用我们库的人也无法使用它。进而Link和Node也毫无用处。让我们来解决它吧！为我们的List实现一些代码！
