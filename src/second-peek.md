@@ -1,8 +1,8 @@
-# Peek
+偷看
 
-One thing we didn't even bother to implement last time was peeking. Let's go
-ahead and do that. All we need to do is return a reference to the element in
-the head of the list, if it exists. Sounds easy, let's try:
+上次我们甚至没有费心去实施的一件事就是偷看。我们走吧
+并做到这一点。我们只需要返回对中元素的引用
+列表的头部（如果存在）。听起来很简单，让我们试试：
 
 ```rust ,ignore
 pub fn peek(&self) -> Option<&T> {
@@ -31,12 +31,12 @@ error[E0507]: cannot move out of borrowed content
 
 ```
 
-*Sigh*. What now, Rust?
+* 叹气*。现在怎么办，拉斯特？
 
-Map takes `self` by value, which would move the Option out of the thing it's in.
-Previously this was fine because we had just `take`n it out, but now we actually
-want to leave it where it was. The *correct* way to handle this is with the
-`as_ref` method on Option, which has the following definition:
+Map按值获取`self` ，这将将Option移出它所在的内容。
+以前这很好，因为我们只是`take`n出来了，但现在我们实际上
+想把它留在原地。处理此问题的*正确*方法是使用
+Option上的`as_ref`方法，其定义如下：
 
 ```rust ,ignore
 impl<T> Option<T> {
@@ -44,10 +44,10 @@ impl<T> Option<T> {
 }
 ```
 
-It demotes the `Option<T>` to an Option to a reference to its internals. We could
-do this ourselves with an explicit match but *ugh no*. It does mean that we
-need to do an extra dereference to cut through the extra indirection, but
-thankfully the `.` operator handles that for us.
+它将`Option<T>`降级为引用其内部的Option。我们可以
+用显式匹配自己做，但*呃不*。这确实意味着我们
+需要做一个额外的dereference来切断额外的间接，但是
+谢天谢地， `.`运营商为我们处理了这个问题。
 
 
 ```rust ,ignore
@@ -64,9 +64,9 @@ cargo build
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
 ```
 
-Nailed it.
+搞定了！
 
-We can also make a *mutable* version of this method using `as_mut`:
+我们还可以使用`as_mut`创建此方法的*可变*版本：
 
 ```rust ,ignore
 pub fn peek_mut(&mut self) -> Option<&mut T> {
@@ -83,7 +83,7 @@ pub fn peek_mut(&mut self) -> Option<&mut T> {
 
 EZ
 
-Don't forget to test it:
+别忘了测试一下：
 
 ```rust ,ignore
 #[test]
@@ -112,7 +112,7 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-That's nice, but we didn't really test to see if we could mutate that `peek_mut` return value, did we?  If a reference is mutable but nobody mutates it, have we really tested the mutability?  Let's try using `map` on this `Option<&mut T>` to put a profound value in:
+这很好，但我们并没有真正测试是否可以改变`peek_mut`返回值，不是吗？如果一个引用是可变的，但没有人改变它，我们真的测试过可变性吗？让我们尝试在这个`Option<&mut T>`上使用`map`来给出深刻的价值：
 
 ```rust ,ignore
 #[test]
@@ -148,7 +148,7 @@ error[E0384]: cannot assign twice to immutable variable `value`
     |             ^^^^^^^^^^ cannot assign twice to immutable variable          ^~~~~
 ```
 
-The compiler is complaining that `value` is immutable, but we pretty clearly wrote `&mut value`; what gives? It turns out that writing the argument of the closure that way doesn't specify that `value` is a mutable reference. Instead, it creates a pattern that will be matched against the argument to the closure; `|&mut value|` means "the argument is a mutable reference, but just copy the value it points to into `value`, please."  If we just use `|value|`, the type of `value` will be `&mut i32` and we can actually mutate the head:
+QUERY LENGTH LIMIT EXCEEDED. MAX ALLOWED QUERY : 500 CHARS
 
 ```rust ,ignore
     #[test]
@@ -184,4 +184,4 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Much better!
+好得多

@@ -1,6 +1,6 @@
-# Final Code
+# 最终代码
 
-Alright, that's it for the second list; here's the final code!
+好了，第二个列表就到这里；下面是最终代码！
 
 ```rust
 pub struct List<T> {
@@ -196,4 +196,4 @@ mod test {
 
 ```
 
-Getting beefier!
+越来越强了！

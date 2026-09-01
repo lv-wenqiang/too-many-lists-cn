@@ -1,6 +1,6 @@
 # IntoIter
 
-Collections are iterated in Rust using the *Iterator* trait. It's a bit more
+在 Rust 中，集合通过 *Iterator* 特征进行迭代。 It's a bit 更多
 complicated than `Drop`:
 
 ```rust ,ignore
@@ -10,28 +10,28 @@ pub trait Iterator {
 }
 ```
 
-The new kid on the block here is `type Item`. This is declaring that every
-implementation of Iterator has an *associated type* called Item. In this case,
-this is the type that it can spit out when you call `next`.
+这个 新 kid on 这个 block here 是 `type Item`. 这 是 declaring that 每个
+实现 of Iterator has an *associated type* 称为 Item. In 这 case,
+这 是 这个 type that it 可以 spit 出 当 你 call `next`.
 
-The reason Iterator yields `Option<Self::Item>` is because the interface
-coalesces the `has_next` and `get_next` concepts. When you have the next value,
-you yield
-`Some(value)`, and when you don't you yield `None`. This makes the
-API generally more ergonomic and safe to use and implement, while avoiding
-redundant checks and logic between `has_next` and `get_next`. Nice!
+这个 reason Iterator yields `Option<Self::Item>` 是 因为 这个 interface
+coalesces 这个 `has_next` and `get_next` concepts. When 你 have 这个 next 值,
+你 yield
+`Some(value)`, and 当 你 don't 你 yield `None`. 这 makes 这个
+API generally 更多 ergonomic and 安全 to use and 实现, while avoiding
+redundant checks and 逻辑 between `has_next` and `get_next`. 不错！
 
 Sadly, Rust has nothing like a `yield` statement (yet), so we're going to have to
-implement the logic ourselves. Also, there's actually 3 different kinds of
-iterator each collection should endeavour to implement:
+实现 这个 逻辑 ourselves. Also, there's 实际上 3 不同 kinds of
+迭代器 每个 collection 应该 endeavour to 实现:
 
 * IntoIter - `T`
 * IterMut - `&mut T`
 * Iter - `&T`
 
-We actually already have all the tools to implement
-IntoIter using List's interface: just call `pop` over and over. As such, we'll
-just implement IntoIter as a newtype wrapper around List:
+我们 实际上 已经 have 所有 这个 tools to 实现
+IntoIter 使用 List's interface: 只是 call `pop` 反复 and 反复. As such, we'll
+只是 实现 IntoIter as a newtype wrapper 周围 List:
 
 
 ```rust ,ignore
@@ -54,7 +54,7 @@ impl<T> Iterator for IntoIter<T> {
 }
 ```
 
-And let's write a test:
+接下来写个测试：
 
 ```rust ,ignore
 #[test]
@@ -85,4 +85,4 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Nice!
+不错！

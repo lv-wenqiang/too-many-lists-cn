@@ -1,22 +1,22 @@
-# An Ok Singly-Linked Stack
+# 一个好的单向链表栈
 
-In the previous chapter we wrote up a minimum viable singly-linked
-stack. However there's a few design decisions that make it kind of sucky.
-Let's make it less sucky. In doing so, we will:
+在上一章中，我们写了一个最小可行单向链表
+栈。但是，有一些设计决策使其有点糟糕。
+让我们让它不那么糟糕。在此过程中，我们将：
 
-* Deinvent the wheel
-* Make our list able to handle any element type
-* Add peeking
-* Make our list iterable
+* 重复造轮子
+* 使我们的列表能够处理任何元素类型
+* 添加查看
+* 使我们的列表可迭代
 
-And in the process we'll learn about
+在这个过程中，我们将了解
 
-* Advanced Option use
-* Generics
-* Lifetimes
-* Iterators
+Option 的高级用法
+泛型
+生命周期
+迭代器
 
-Let's add a new file called `second.rs`:
+让我们添加一个名为`second.rs`的新文件：
 
 ```rust ,ignore
 // in lib.rs
@@ -25,4 +25,4 @@ pub mod first;
 pub mod second;
 ```
 
-And copy everything from `first.rs` into it.
+并将`first.rs`中的所有内容复制到其中。
