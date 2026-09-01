@@ -1,11 +1,10 @@
-# Iteration
+# 迭代
 
-Let's take a crack at iterating this bad-boy.
+我们来试试给这个大家伙做迭代。
 
 ## IntoIter
 
-IntoIter, as always, is going to be the easiest. Just wrap the stack and
-call `pop`:
+IntoIter 一如既往是最容易的。把栈包起来然后调用`pop`就行了：
 
 ```rust ,ignore
 pub struct IntoIter<T>(List<T>);
@@ -24,27 +23,23 @@ impl<T> Iterator for IntoIter<T> {
 }
 ```
 
-But we have an interesting new development. Where previously there was only
-ever one "natural" iteration order for our lists, a Deque is inherently
-bi-directional. What's so special about front-to-back? What if someone wants
-to iterate in the other direction?
+不过这次出现了一个有意思的新情况。以前我们的链表只有一种“自然的”迭代顺序，
+而双端队列天生就是双向的。从前往后有什么特别的吗？如果有人想朝另一个方向
+迭代呢？
 
-Rust actually has an answer to this: `DoubleEndedIterator`. DoubleEndedIterator
-*inherits* from Iterator (meaning all DoubleEndedIterator are Iterators) and
-requires one new method: `next_back`. It has the exact same signature as
-`next`, but it's supposed to yield elements from the other end. The semantics
-of DoubleEndedIterator are super convenient for us: the iterator becomes a
-deque. You can consume elements from the front and back until the two ends
-converge, at which point the iterator is empty.
+Rust 其实对此有个答案：`DoubleEndedIterator`。DoubleEndedIterator
+*继承*自 Iterator（意思是所有 DoubleEndedIterator 都是迭代器），
+并要求一个新方法：`next_back`。它的签名和`next`完全一样，
+但它应该从另一端产出元素。DoubleEndedIterator 的语义对我们来说超级方便：
+这个迭代器变成了一个双端队列。你可以从前端和后端消耗元素，
+直到两端相遇，此时迭代器就空了。
 
-Much like Iterator and `next`, it turns out that `next_back` isn't really
-something consumers of the DoubleEndedIterator really care about. Rather, the
-best part of this interface is that it exposes the `rev` method, which wraps
-up the iterator to make a new one that yields the elements in reverse order.
-The semantics of this are fairly straight-forward: calls to `next` on the
-reversed iterator are just calls to `next_back`.
+就像 Iterator 和`next`一样，事实证明 DoubleEndedIterator 的使用者其实并不怎么
+关心`next_back`本身。这个接口最棒的地方在于，它暴露了`rev`方法，
+该方法会把迭代器包起来，造出一个按相反顺序产出元素的新迭代器。
+它的语义相当直白：在反转后的迭代器上调用`next`，其实就是调用`next_back`。
 
-Anyway, because we're already a deque providing this API is pretty easy:
+总之，因为我们本来就是个双端队列，提供这个 API 相当容易：
 
 ```rust ,ignore
 impl<T> DoubleEndedIterator for IntoIter<T> {
@@ -54,7 +49,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 ```
 
-And let's test it out:
+来测试一下：
 
 ```rust ,ignore
 #[test]
@@ -94,13 +89,12 @@ test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Nice.
+不错。
 
 ## Iter
 
-Iter will be a bit less forgiving. We'll have to deal with those awful `Ref`
-things again! Because of Refs, we can't store `&Node`s like we did before.
-Instead, let's try to store `Ref<Node>`s:
+Iter 就没那么好说话了。我们又得跟那些讨厌的`Ref`打交道！因为有 Ref 在，
+我们没法像以前那样存`&Node`。那我们就试着存`Ref<Node>`吧：
 
 ```rust ,ignore
 pub struct Iter<'a, T>(Option<Ref<'a, Node<T>>>);
@@ -117,9 +111,8 @@ impl<T> List<T> {
 
 ```
 
-So far so good. Implementing `next` is going to be a bit hairy, but I think
-it's the same basic logic as the old stack IterMut but with extra RefCell
-madness:
+到目前为止都还行。实现`next`会有点棘手，不过我觉得它的基本逻辑跟以前栈的
+IterMut 是一样的，只是多了一层 RefCell 带来的疯狂：
 
 ```rust ,ignore
 impl<'a, T> Iterator for Iter<'a, T> {
@@ -161,14 +154,13 @@ error[E0505]: cannot move out of `node_ref` because it is borrowed
     |                      ^^^^^^^^ move out of `node_ref` occurs here
 ```
 
-Shoot.
+糟糕。
 
-`node_ref` doesn't live long enough. Unlike normal references, Rust doesn't let
-us just split Refs up like that. The Ref we get out of `head.borrow()` is only
-allowed to live as long as `node_ref`, but we end up trashing that in our
-`Ref::map` call.
+`node_ref`活得不够久。与普通引用不同，Rust 不允许我们就那样把 Ref 拆开。
+我们从`head.borrow()`拿到的那个 Ref 只被允许活得和`node_ref`一样久，
+可我们在`Ref::map`调用里把它给毁掉了。
 
-The function we want exists, and it's called *[map_split][]*:
+我们想要的那个函数是存在的，它叫做*[map_split][]*：
 
 ```rust ,ignore
 pub fn map_split<U, V, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>) where
@@ -177,7 +169,7 @@ pub fn map_split<U, V, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>) wh
     V: ?Sized,
 ```
 
-Woof. Let's give it a try...
+汪。来试试看……
 
 ```rust ,ignore
 fn next(&mut self) -> Option<Self::Item> {
@@ -208,11 +200,10 @@ error[E0521]: borrowed data escapes outside of closure
     |             reference to `next` escapes the closure body here
 ```
 
-Ergh. We need to `Ref::Map` again to get our lifetimes right. But `Ref::Map`
-returns a `Ref` and we need an `Option<Ref>`, but we need to go through the
-Ref to map over our Option...
+呃。我们得再用一次`Ref::Map`才能让生命周期对上。但`Ref::Map`返回的是一个`Ref`，
+而我们需要的是`Option<Ref>`，可我们又必须穿过 Ref 才能在 Option 上做 map……
 
-**stares into distance for a long time**
+**长时间凝视远方**
 
 ??????
 
@@ -245,18 +236,15 @@ error[E0308]: mismatched types
                found type `std::cell::Ref<'_, std::cell::RefCell<fourth::Node<_>>>`
 ```
 
-Oh. Right. There's multiple RefCells. The deeper we walk into the list, the more
-nested we become under each RefCell. We would need to maintain, like, a stack of
-Refs to represent all the outstanding loans we're holding, because if we stop
-looking at an element we need to decrement the borrow-count on every RefCell that
-comes before it.................
+哦。对哦。有好多个 RefCell。我们在链表里走得越深，就在每一个 RefCell 底下
+嵌套得越深。我们大概得维护一个 Ref 的栈，来表示我们手上所有未归还的借用，
+因为一旦我们不再看某个元素，就得把它前面每一个 RefCell 的借用计数都减掉
+.................
 
-I don't think there's anything we can do here. It's a dead end. Let's try
-getting out of the RefCells.
+我觉得这里我们已经无计可施了。这是条死路。我们试着从 RefCell 里跳出来吧。
 
-What about our `Rc`s. Who said we even needed to store references?
-Why can't we just Clone the whole Rc to get a nice owning handle into the middle
-of the list?
+那我们的`Rc`呢。谁说我们非得存引用不可？为什么不能直接把整个 Rc 克隆一份，
+得到一个指向链表中间、漂亮的、拥有所有权的句柄呢？
 
 ```rust ,ignore
 pub struct Iter<T>(Option<Rc<Node<T>>>);
@@ -271,59 +259,50 @@ impl<T> Iterator for Iter<T> {
     type Item =
 ```
 
-Uh... Wait what do we return now? `&T`? `Ref<T>`?
+呃……等等，我们现在返回什么？`&T`？`Ref<T>`？
 
-No, none of those work... our Iter doesn't have a lifetime anymore! Both `&T`
-and `Ref<T>` require us to declare some lifetime up front before we get into
-`next`. But anything we manage to get out of our Rc would be borrowing the
-Iterator... brain... hurt... aaaaaahhhhhh
+不行，这些都不行……我们的 Iter 已经没有生命周期了！`&T`和`Ref<T>`都要求我们
+在进入`next`之前就先声明某个生命周期。可我们从 Rc 里弄出来的任何东西
+都会是在借用这个迭代器……脑子……疼……啊啊啊啊啊啊
 
-Maybe we can... map... the Rc... to get an `Rc<T>`? Is that a thing? Rc's docs
-don't seem to have anything like that. Actually someone made [a crate][own-ref]
-that lets you do that.
+也许我们可以……对 Rc……做 map……来得到一个`Rc<T>`？有这种东西吗？
+Rc 的文档里似乎没有类似的玩意儿。实际上有人做了[一个 crate][own-ref]，
+让你能干这件事。
 
-But wait, even if we do *that* then we've got an even bigger problem: the
-dreaded spectre of iterator invalidation. Previously we've been totally immune
-to iterator invalidation, because the Iter borrowed the list, leaving it totally
-immutable. However if our Iter was yielding Rcs, they wouldn't borrow the list
-at all! That means people can start calling `push` and `pop` on the list while
-they hold pointers into it!
+但等一下，就算我们*那么*干了，我们还有一个更大的问题：迭代器失效这个可怕的
+幽灵。以前我们对迭代器失效是完全免疫的，因为 Iter 借用了链表，让它彻底不可变。
+然而如果我们的 Iter 产出的是 Rc，它们就压根不借用链表了！这意味着人们可以在
+手里攥着指向链表内部的指针时，对链表调用`push`和`pop`！
 
-Oh lord, what will that do?!
+老天爷，那会造成什么后果？！
 
-Well, pushing is actually fine. We've got a view into some sub-range of the
-list, and the list will just grow beyond our sights. No biggie.
+嗯，压入其实没问题。我们持有的是链表某个子区间的视图，链表只会在我们的视野
+之外长大而已。没什么大不了的。
 
-However `pop` is another story. If they're popping elements outside of our
-range, it should *still* be fine. We can't see those nodes so nothing will
-happen. However if they try to pop off the node we're pointing at... everything
-will blow up! In particular when they go to `unwrap` the result of the
-`try_unwrap`, it will actually fail, and the whole program will panic.
+但`pop`就是另一回事了。如果他们弹出的是我们区间之外的元素，那*仍然*没问题。
+我们看不见那些节点，所以什么都不会发生。可要是他们试图把我们正指着的那个节点
+弹出去……一切都会爆炸！具体来说，当他们去`unwrap`那个`try_unwrap`的结果时，
+它会真的失败，整个程序就会 panic。
 
-That's actually pretty cool. We can get tons of interior owning pointers into
-the list and mutate it at the same time *and it will just work* until they
-try to remove the nodes that we're pointing at. And even then we don't get
-dangling pointers or anything, the program will deterministically panic!
+这其实挺酷的。我们可以拿到一大堆指向链表内部、拥有所有权的指针，
+同时还能修改链表，*而且它就是能用*，直到他们试图移除我们正指着的节点为止。
+就算到了那一步，我们也不会得到悬垂指针之类的东西，程序会确定性地 panic！
 
-But having to deal with iterator invalidation on top of mapping Rcs just
-seems... bad. `Rc<RefCell>` has really truly finally failed us. Interestingly,
-we've experienced an inversion of the persistent stack case. Where the
-persistent stack struggled to ever reclaim ownership of the data but could get
-references all day every day, our list had no problem gaining ownership, but
-really struggled to loan our references.
+但在对 Rc 做 map 之上还得处理迭代器失效，这看起来就……很糟。`Rc<RefCell>`
+这次是真的、彻底地辜负我们了。有意思的是，我们经历的正好是持久化栈那一幕的
+反面。持久化栈很难重新夺回数据的所有权，却可以随时随地拿到引用；
+而我们这个链表获得所有权毫无压力，却在把引用借出去这件事上举步维艰。
 
-Although to be fair, most of our struggles revolved around wanting to hide the
-implementation details and have a decent API. We *could* do everything fine
-if we wanted to just pass around Nodes all over the place.
+不过平心而论，我们大部分的挣扎都围绕着想要隐藏实现细节、给出一个体面的 API。
+如果我们愿意到处传来传去 Node，那一切*都能*搞定。
 
-Heck, we could make multiple concurrent IterMuts that were runtime checked to
-not be mutable accessing the same element!
+见鬼，我们甚至可以造出多个并发的 IterMut，并在运行时检查它们没有同时可变地
+访问同一个元素！
 
-Really, this design is more appropriate for an internal data structure that
-never makes it out to consumers of the API. Interior mutability is great for
-writing safe *applications*. Not so much safe *libraries*.
+说真的，这种设计更适合那种永远不会暴露给 API 使用者的内部数据结构。
+内部可变性非常适合用来写安全的*应用程序*。用来写安全的*库*就没那么合适了。
 
-Anyway, that's me giving up on Iter and IterMut. We could do them, but *ugh*.
+总之，Iter 和 IterMut 我就放弃了。我们本来能做出来，但*呃*。
 
 [own-ref]: https://crates.io/crates/owning_ref
 [map-split]: https://doc.rust-lang.org/std/cell/struct.Ref.html#method.map_split

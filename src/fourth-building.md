@@ -1,9 +1,8 @@
-# Building Up
+# 构建
 
-Alright, we'll start with building the list. That's pretty straight-forward
-with this new system. `new` is still trivial, just None out all the fields.
-Also because it's getting a bit unwieldy, let's break out a Node constructor
-too:
+好了，我们从构建链表开始。在这套新体系下，这相当直截了当。
+`new`仍然平淡无奇，把所有字段都置为 None 就行。另外，因为代码开始有点笨重了，
+我们顺手把 Node 的构造函数也拆出来：
 
 ```rust ,ignore
 impl<T> Node<T> {
@@ -29,24 +28,21 @@ impl<T> List<T> {
 **A BUNCH OF DEAD CODE WARNINGS BUT IT BUILT**
 ```
 
-Yay!
+好耶！
 
-Now let's try to write pushing onto the front of the list. Because
-doubly-linked lists are significantly more complicated, we're going to need
-to do a fair bit more work. Where singly-linked list operations could be
-reduced to an easy one-liner, doubly-linked list ops are fairly complicated.
+现在我们来试着写往链表头部压入的操作。因为双向链表要复杂得多，
+我们得多干不少活。单向链表的操作能被压缩成轻松的一行，
+而双向链表的操作则相当复杂。
 
-In particular we now need to specially handle some boundary cases around
-empty lists. Most operations will only touch the `head` or `tail` pointer.
-However when transitioning to or from the empty list, we need to edit
-*both* at once.
+具体来说，我们现在需要特别处理围绕空链表的一些边界情况。大多数操作只会碰
+`head`或`tail`指针。然而在从空链表转换出去、或者转换回空链表时，
+我们需要同时改动*两个*。
 
-An easy way for us to validate if our methods make sense is if we maintain
-the following invariant: each node should have exactly two pointers to it.
-Each node in the middle of the list is pointed at by its predecessor and
-successor, while the nodes on the ends are pointed to by the list itself.
+有一个简单的办法可以验证我们的方法是否说得通：看我们是否维持了下面这个不变式，
+即每个节点都应该恰好有两个指向它的指针。链表中间的每个节点都被它的前驱和后继
+指着，而两端的节点则被链表本身指着。
 
-Let's take a crack at it:
+我们来试一把：
 
 ```rust ,ignore
 pub fn push_front(&mut self, elem: T) {
@@ -86,64 +82,59 @@ error[E0609]: no field `next` on type `std::rc::Rc<std::cell::RefCell<fourth::No
    |                          ^^^^ unknown field
 ```
 
-Alright. Compiler error. Good start. Good start.
+好吧。编译错误。开局不错。开局不错。
 
-Why can't we access the `prev` and `next` fields on our nodes? It worked before
-when we just had an `Rc<Node>`. Seems like the `RefCell` is getting in the way.
+为什么我们不能访问节点上的`prev`和`next`字段？之前我们只有`Rc<Node>`的时候
+明明是好使的。看起来是`RefCell`在挡道。
 
-We should probably check the docs.
+我们大概该去查查文档。
 
-*Google's "rust refcell"*
+*用谷歌搜索“rust refcell”*
 
-*[clicks first link](https://doc.rust-lang.org/std/cell/struct.RefCell.html)*
+*[点击第一个链接](https://doc.rust-lang.org/std/cell/struct.RefCell.html)*
 
-> A mutable memory location with dynamically checked borrow rules
+> 一个具有动态检查借用规则的可变内存位置
 >
-> See the [module-level documentation](https://doc.rust-lang.org/std/cell/index.html) for more.
+> 更多内容参见[模块级文档](https://doc.rust-lang.org/std/cell/index.html)。
 
-*clicks link*
+*点击链接*
 
-> Shareable mutable containers.
+> 可共享的可变容器。
 >
-> Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
-> the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
-> references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
-> with typical Rust types that exhibit 'inherited mutability'.
+> `Cell<T>`和`RefCell<T>`类型的值可以透过共享引用（也就是常见的`&T`类型）被修改，
+> 而大多数 Rust 类型只能透过独占（`&mut T`）引用被修改。我们说`Cell<T>`和
+> `RefCell<T>`提供了“内部可变性”，与之相对的是表现出“继承式可变性”的典型
+> Rust 类型。
 >
-> Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` provides `get` and `set`
-> methods that change the interior value with a single method call. `Cell<T>` though is only
-> compatible with types that implement `Copy`. For other types, one must use the `RefCell<T>`
-> type, acquiring a write lock before mutating.
+> Cell 类型有两种风味：`Cell<T>`和`RefCell<T>`。`Cell<T>`提供`get`和`set`方法，
+> 只需一次方法调用就能改变内部的值。不过`Cell<T>`只兼容那些实现了`Copy`的类型。
+> 对于其他类型，则必须使用`RefCell<T>`类型，在修改之前先获取一个写锁。
 >
-> `RefCell<T>` uses Rust's lifetimes to implement 'dynamic borrowing', a process whereby one can
-> claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
-> tracked 'at runtime', unlike Rust's native reference types which are entirely tracked
-> statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
-> to borrow a value that is already mutably borrowed; when this happens it results in thread
-> panic.
+> `RefCell<T>`利用 Rust 的生命周期实现了“动态借用”，这个过程让人可以宣称自己
+> 对内部值拥有临时的、独占的、可变的访问权。`RefCell<T>`的借用是“在运行时”被
+> 追踪的，这与 Rust 原生的引用类型不同，后者完全是在编译期静态追踪的。因为
+> `RefCell<T>`的借用是动态的，所以有可能试图借用一个已经被可变借用的值；
+> 当这种情况发生时，就会导致线程 panic。
 >
-> # When to choose interior mutability
+> # 何时选择内部可变性
 >
-> The more common inherited mutability, where one must have unique access to mutate a value, is
-> one of the key language elements that enables Rust to reason strongly about pointer aliasing,
-> statically preventing crash bugs. Because of that, inherited mutability is preferred, and
-> interior mutability is something of a last resort. Since cell types enable mutation where it
-> would otherwise be disallowed though, there are occasions when interior mutability might be
-> appropriate, or even *must* be used, e.g.
+> 更常见的继承式可变性——即必须拥有独占访问权才能修改一个值——是让 Rust 能够
+> 对指针别名进行强有力推理、从静态层面预防崩溃缺陷的关键语言要素之一。正因如此，
+> 继承式可变性是首选，而内部可变性多少算是最后的手段。不过既然 cell 类型能在
+> 本来不被允许的地方开启修改能力，那么在某些场合内部可变性可能是恰当的，
+> 甚至*必须*被使用，例如：
 >
-> * Introducing inherited mutability roots to shared types.
-> * Implementation details of logically-immutable methods.
-> * Mutating implementations of `Clone`.
+> * 为共享类型引入继承式可变性的根。
+> * 逻辑上不可变的方法的实现细节。
+> * 会进行修改的`Clone`实现。
 >
-> ## Introducing inherited mutability roots to shared types
+> ## 为共享类型引入继承式可变性的根
 >
-> Shared smart pointer types, including `Rc<T>` and `Arc<T>`, provide containers that can be
-> cloned and shared between multiple parties. Because the contained values may be
-> multiply-aliased, they can only be borrowed as shared references, not mutable references.
-> Without cells it would be impossible to mutate data inside of shared boxes at all!
+> 共享智能指针类型，包括`Rc<T>`和`Arc<T>`，提供了可以被克隆并在多方之间共享的
+> 容器。因为其中包含的值可能存在多重别名，所以它们只能作为共享引用被借用，
+> 而不能作为可变引用。如果没有 cell，就根本不可能修改共享 box 内部的数据！
 >
-> It's very common then to put a `RefCell<T>` inside shared pointer types to reintroduce
-> mutability:
+> 因此，把`RefCell<T>`放进共享指针类型里以重新引入可变性，是非常常见的做法：
 >
 > ```rust ,ignore
 > use std::collections::HashMap;
@@ -159,20 +150,19 @@ We should probably check the docs.
 > }
 > ```
 >
-> Note that this example uses `Rc<T>` and not `Arc<T>`. `RefCell<T>`s are for single-threaded
-> scenarios. Consider using `Mutex<T>` if you need shared mutability in a multi-threaded
-> situation.
+> 注意这个例子用的是`Rc<T>`而不是`Arc<T>`。`RefCell<T>`是给单线程场景用的。
+> 如果你在多线程场景下需要共享的可变性，请考虑使用`Mutex<T>`。
 
-Hey, Rust's docs continue to be incredibly awesome.
+嘿，Rust 的文档一如既往地棒极了。
 
-The meaty bit we care about is this line:
+我们真正关心的干货是这一行：
 
 ```rust ,ignore
 shared_map.borrow_mut().insert("africa", 92388);
 ```
 
-In particular, the `borrow_mut` thing. Seems we need to explicitly borrow a
-RefCell. The `.` operator's not going to do it for us. Weird. Let's try:
+尤其是那个`borrow_mut`。看起来我们需要显式地借用 RefCell。`.`运算符不会
+替我们代劳。真怪。来试试：
 
 ```rust ,ignore
 pub fn push_front(&mut self, elem: T) {
@@ -204,4 +194,4 @@ warning: field is never used: `elem`
    = note: #[warn(dead_code)] on by default
 ```
 
-Hey, it built! Docs win again.
+嘿，它编译过了！文档再次获胜。

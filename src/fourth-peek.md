@@ -1,14 +1,14 @@
-# Peeking
+# 查看
 
-Alright, we made it through `push` and `pop`. I'm not gonna lie, it got a
-bit emotional there. Compile-time correctness is a hell of a drug.
+好了，我们熬过了`push`和`pop`。不骗你，刚才那段有点情绪上头。
+编译期正确性真是一剂猛药。
 
-Let's cool off by doing something simple: let's just implement `peek_front`.
-That was always really easy before. Gotta still be easy, right?
+我们来做点简单的事情降降温：实现`peek_front`就行了。
+这事儿以前一直都特别容易。现在肯定还是很容易，对吧？
 
-Right?
+对吧？
 
-In fact, I think I can just copy-paste it!
+事实上，我觉得我直接复制粘贴就行了！
 
 ```rust ,ignore
 pub fn peek_front(&self) -> Option<&T> {
@@ -18,7 +18,7 @@ pub fn peek_front(&self) -> Option<&T> {
 }
 ```
 
-Wait. Not this time.
+等等。这次不行。
 
 ```rust ,ignore
 pub fn peek_front(&self) -> Option<&T> {
@@ -29,7 +29,7 @@ pub fn peek_front(&self) -> Option<&T> {
 }
 ```
 
-HAH.
+哈。
 
 ```text
 cargo build
@@ -45,55 +45,49 @@ error[E0515]: cannot return value referencing temporary value
    |             returns a value referencing data owned by the current function
 ```
 
-Ok I'm just burning my computer.
+行吧，我这就去把电脑烧了。
 
-This is exactly the same logic as our singly-linked stack. Why are things
-different. WHY.
+这跟我们的单向链表栈是一模一样的逻辑。为什么结果不一样。为什么啊。
 
-The answer is really the whole moral of this chapter: RefCells make everything
-sadness. Up until now, RefCells have just been a nuisance. Now they're going to
-become a nightmare.
+答案其实就是本章的全部寓意：RefCell 让一切都变得悲伤。到目前为止，
+RefCell 还只是个麻烦。现在它们要变成噩梦了。
 
-So what's going on? To understand that, we need to go back to the definition of
-`borrow`:
+那到底出了什么事？要搞明白这一点，我们得回到`borrow`的定义：
 
 ```rust ,ignore
 fn borrow<'a>(&'a self) -> Ref<'a, T>
 fn borrow_mut<'a>(&'a self) -> RefMut<'a, T>
 ```
 
-In the layout section we said:
+在布局那一节里我们说过：
 
-> Rather than enforcing this statically, RefCell enforces them at runtime.
-> If you break the rules, RefCell will just panic and crash the program.
-> Why does it return these Ref and RefMut things? Well, they basically behave
-> like `Rc`s but for borrowing. Also they keep the RefCell borrowed until they go out
-> of scope. **We'll get to that later.**
+> RefCell 不是在静态层面强制这些规则，而是在运行时强制它们。
+> 如果你破坏了规则，RefCell 就会直接 panic 并让程序崩溃。
+> 它为什么要返回 Ref 和 RefMut 这些东西呢？嗯，它们的行为基本上就像是
+> 借用版的`Rc`。它们还会让 RefCell 一直保持被借用状态，直到它们离开作用域。
+> **这个我们后面再说。**
 
-It's later.
+现在就是后面了。
 
-`Ref` and `RefMut` implement `Deref` and `DerefMut` respectively. So for most
-intents and purposes they behave *exactly* like `&T` and `&mut T`. However,
-because of how those traits work, the reference that's returned is connected
-to the lifetime of the Ref, and not the actual RefCell. This means that the Ref
-has to be sitting around as long as we keep the reference around.
+`Ref`和`RefMut`分别实现了`Deref`和`DerefMut`。所以在绝大多数意义上，
+它们的行为*完全*就像`&T`和`&mut T`。然而，由于这些特征的工作方式，
+返回的那个引用是和 Ref 的生命周期绑定的，而不是和真正的 RefCell 绑定。
+这意味着只要我们还留着那个引用，Ref 就必须一直杵在那儿。
 
-This is in fact necessary for correctness. When a Ref gets dropped, it tells
-the RefCell that it's not borrowed anymore. So if we *did* manage to hold onto our
-reference longer than the Ref existed, we could get a RefMut while a reference
-was kicking around and totally break Rust's type system in half.
+这实际上是保证正确性所必需的。当一个 Ref 被丢弃时，它会告诉 RefCell
+自己不再借用了。所以如果我们*真的*设法让引用活得比 Ref 还久，
+那我们就可能在还有引用在外面晃悠的时候拿到一个 RefMut，
+把 Rust 的类型系统彻底掰成两半。
 
-So where does that leave us? We only want to return a reference, but we need
-to keep this Ref thing around. But as soon as we return the reference from
-`peek`, the function is over and the `Ref` goes out of scope.
+那这让我们陷入了什么境地呢？我们只想返回一个引用，却又必须让这个 Ref
+留在身边。可是一旦我们从`peek`里把引用返回出去，函数就结束了，
+`Ref`也就离开了作用域。
 
 😖
 
-As far as I know, we're actually totally dead in the water here. You can't
-totally encapsulate the use of RefCells like that.
+据我所知，我们在这里其实是彻底没辙了。你没法那样把 RefCell 的使用完全封装起来。
 
-But... what if we just give up on totally hiding our implementation details?
-What if we returns Refs?
+但是……如果我们干脆放弃完全隐藏实现细节呢？如果我们就返回 Ref 呢？
 
 ```rust ,ignore
 pub fn peek_front(&self) -> Option<Ref<T>> {
@@ -119,7 +113,7 @@ help: possible candidates are found in other modules, you can import them into s
    |
 ```
 
-Blurp. Gotta import some stuff.
+噗。得导入点东西。
 
 
 ```rust ,ignore
@@ -141,15 +135,13 @@ error[E0308]: mismatched types
               found type `std::option::Option<std::cell::Ref<'_, fourth::Node<T>>>`
 ```
 
-Hmm... that's right. We have a `Ref<Node<T>>`, but we want a `Ref<T>`. We could
-abandon all hope of encapsulation and just return that. We could also make
-things even more complicated and wrap `Ref<Node<T>>` in a new type to only
-expose access to an `&T`.
+嗯……没错。我们有的是`Ref<Node<T>>`，而我们想要的是`Ref<T>`。我们可以放弃
+封装的一切念想，直接把它返回出去。我们也可以把事情搞得更复杂，
+把`Ref<Node<T>>`包进一个新类型里，只暴露对`&T`的访问。
 
-Both of those options are *kinda* lame.
+这两个选项都*有点*逊。
 
-Instead, we're going to go deeper down. Let's
-have some *fun*. Our source of fun is *this beast*:
+所以我们要往更深处走。来找点*乐子*。我们的乐子来源是*这头猛兽*：
 
 ```rust ,ignore
 map<U, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
@@ -157,15 +149,14 @@ map<U, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
           U: ?Sized
 ```
 
-> Make a new Ref for a component of the borrowed data.
+> 为所借用数据的某个组成部分创建一个新的 Ref。
 
-Yes: just like you can map over an Option, you can map over a Ref.
+没错：就像你可以在 Option 上做 map 一样，你也可以在 Ref 上做 map。
 
-I'm sure someone somewhere is really excited because *monads* or whatever but
-I don't care about any of that. Also I don't think it's a proper monad since
-there's no None-like case, but I digress.
+我敢肯定某个地方有人会因为*单子*之类的东西而兴奋不已，但那些我一概不关心。
+另外我也不觉得它是个正经的单子，因为这里没有类似 None 的情形，不过我扯远了。
 
-It's cool and that's all that matters to me. *I need this*.
+它很酷，对我来说这就够了。*我需要它*。
 
 ```rust ,ignore
 pub fn peek_front(&self) -> Option<Ref<T>> {
@@ -179,10 +170,10 @@ pub fn peek_front(&self) -> Option<Ref<T>> {
 > cargo build
 ```
 
-Awww yissss
+啊——爽——
 
-Let's make sure this is working by munging up the test from our stack. We need
-to do some munging to deal with the fact that Refs don't implement comparisons.
+我们把栈的那个测试改吧改吧，确认一下这玩意儿能用。因为 Ref 没有实现比较操作，
+所以得改动几下。
 
 ```rust ,ignore
 #[test]
@@ -217,4 +208,4 @@ test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Great!
+太好了！

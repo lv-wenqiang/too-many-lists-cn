@@ -1,22 +1,20 @@
-# Final Code
+# 最终代码
 
-Alright, so that's implementing a 100% safe doubly-linked list in Rust. It was
-a nightmare to implement, leaks implementation details, and doesn't support several
-fundamental operations.
+好了，这就是在 Rust 里实现一个 100% 安全的双向链表。实现过程堪称噩梦，
+它泄露了实现细节，而且还不支持好几个基本操作。
 
-But, it exists.
+不过，它确实存在。
 
-Oh, I guess it's also riddled with tons of "unnecessary" runtime checks for
-correctness between `Rc` and `RefCell`. I put unnecessary in quotes because
-they're actually necessary to guarantee the whole *actually being safe* thing.
-We encountered a few places where those checks actually *were* necessary.
-Doubly-linked lists have a horribly tangled aliasing and ownership story!
+哦，我想它还塞满了一大堆在`Rc`和`RefCell`之间为正确性所做的“不必要”的运行时
+检查。我给“不必要”打了引号，因为它们其实是保证*真正安全*这件事所必需的。
+我们碰到过好几个地方，那些检查*确实*是必要的。
+双向链表的别名和所有权关系乱成一锅粥！
 
-Still, it's a thing we can do. Especially if we don't care about exposing
-internal data structures to our consumers.
+尽管如此，这仍是我们能做到的事情。尤其是在我们不介意把内部数据结构暴露给
+使用者的情况下。
 
-From here on out, we're going to be focusing on other side of this coin:
-getting back all the control by making our implementation *unsafe*.
+从这里开始，我们将把注意力转向这枚硬币的另一面：
+通过让实现变得*不安全*来把控制权全部拿回来。
 
 ```rust
 use std::rc::Rc;

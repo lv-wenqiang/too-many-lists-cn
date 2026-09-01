@@ -1,8 +1,8 @@
-# Symmetric Junk
+# 对称情况
 
-Alright let's get all that combinatoric symmetry over with.
+好了，我们把那些组合起来的对称情况一次性解决掉。
 
-All we have to do is some basic text replacement:
+我们要做的只是一些基本的文字替换：
 
 ```text
 tail <-> head
@@ -10,7 +10,7 @@ next <-> prev
 front -> back
 ```
 
-Oh, also we need to add `_mut` variants for peeking.
+哦，另外我们还需要给查看操作加上`_mut`变体。
 
 ```rust ,ignore
 use std::cell::{Ref, RefCell, RefMut};
@@ -66,7 +66,7 @@ pub fn peek_front_mut(&mut self) -> Option<RefMut<T>> {
 }
 ```
 
-And massively flesh out our tests:
+然后把我们的测试大幅充实一下：
 
 
 ```rust ,ignore
@@ -142,8 +142,8 @@ fn peek() {
 }
 ```
 
-Are there some cases we're not testing? Probably. The combinatoric space
-has really blown up here. Our code is at very least not *obviously wrong*.
+有没有哪些情形我们没测到？多半有。这里的组合空间真的爆炸了。
+至少我们的代码不是*明显错误*的。
 
 ```text
 > cargo test
@@ -166,4 +166,4 @@ test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Nice. Copy-pasting is the best kind of programming.
+不错。复制粘贴是最棒的一种编程方式。
