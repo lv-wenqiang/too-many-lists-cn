@@ -1,6 +1,6 @@
-# Testing
+# 测试
 
-Alright I put off testing for a while because well, we both know that we're now masters of Rust and we don't make mistakes anymore! Also just, this is a rewrite of an old crate, so I just have all the tests already. They're tests, you've seen tests a lot already. Here they are:
+好了，我把测试拖了好一阵子，因为嘛，你我都知道我们现在已经是 Rust 大师了，再也不会犯错！另外也是因为，这是对一个老 crate 的重写，所以那些测试我本来就都有。它们就是测试，测试你已经见过很多了。它们在这儿：
 
 ```rust ,ignore
 #[cfg(test)]
@@ -276,7 +276,7 @@ mod test {
 }
 ```
 
-And now for the moments of truth:
+现在到了见证真相的时刻：
 
 ```text
 cargo test
@@ -326,6 +326,6 @@ test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 😭
 
-We did it, we actually didn't screw up. This isn't a trick! All of our practice and training was finally worth it, we've finally written *good code*!!!
+我们做到了，我们真的没搞砸。这不是障眼法！我们所有的练习和训练终于值回票价，我们终于写出了*好代码*！！！
 
-Now with all that gunk out of the way, we can get back to the Interesting Stuff!
+现在这些杂七杂八的东西都清理完了，我们可以回到有意思的部分了！

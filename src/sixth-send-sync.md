@@ -1,14 +1,14 @@
-# Send, Sync, and Compile Tests
+# Send、Sync 与编译测试
 
-Ok actually we do have one more pair of traits to think about, but they're special. We have to deal with Rust's Holy Roman Empire: The Unsafe Opt-In Built-In Traits (OIBITs): [Send and Sync](https://doc.rust-lang.org/nomicon/send-and-sync.html), which are in fact opt-out and built-out (1 out of 3 is pretty good!).
+好吧，其实我们还有一对特征要考虑，不过它们很特殊。我们得对付 Rust 的神圣罗马帝国：不安全的选择加入内建特征（OIBIT）：[Send 和 Sync](https://doc.rust-lang.org/nomicon/send-and-sync.html)——而它们实际上是选择退出、而且是外建的（三个词里对了一个，相当不错了！）。
 
-Like Copy, these traits have absolutely no code associated with them, and are just markers that your type has a particular property. Send says that your type is safe to send to another thread. Sync says your type is safe to share between threads (&Self: Send).
+和 Copy 一样，这两个特征完全没有与之关联的代码，只是用来标记你的类型具备某项性质。Send 表示你的类型可以安全地发送到另一个线程。Sync 表示你的类型可以安全地在线程之间共享（&Self: Send）。
 
-The same argument for LinkedList being covariant applies here: generally normal collections which don't use fancy interior mutability tricks are safe to make Send and Sync.
+关于 LinkedList 为什么协变的那套论证在这里同样适用：一般来说，那些不使用花哨内部可变性技巧的普通集合，让它们 Send 和 Sync 都是安全的。
 
-But I said they're *opt out*. So actually, are we already? How would we know?
+但我说过它们是*选择退出*的。那么实际上，我们是不是已经是了？我们怎么知道呢？
 
-Let's add some new magic to our code: random private garbage that won't compile unless our types have the properties we expect:  
+我们往代码里加点新魔法：一些随机的私有垃圾代码，只有当我们的类型具备我们期望的性质时它才能编译通过：
 
 ```rust ,ignore
 #[allow(dead_code)]
@@ -62,9 +62,9 @@ note: required by a bound in `is_send`
 <a million more errors>
 ```
 
-Oh geez, what gives! I had that great Holy Roman Empire joke!
+哎哟，怎么回事！我那个神圣罗马帝国的好梗都准备好了！
 
-Well, I lied to you when I said raw pointers have only one safety guard: this is the other. `*const` AND `*mut` explicitly opt out of Send and Sync to be safe, so we do *actually* have to opt back in:
+嗯，我说原始指针只有一项安全防护时骗了你：这就是另一项。`*const`和`*mut`为了安全都显式地选择退出了 Send 和 Sync，所以我们*确实*得把它们重新选回来：
 
 ```rust ,ignore
 unsafe impl<T: Send> Send for LinkedList<T> {}
@@ -77,9 +77,9 @@ unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 ```
 
-Note that we have to write *unsafe impl* here: these are *unsafe traits*! Unsafe code (like concurrency libraries) gets to rely on us only implementing these traits correctly! Since there's no actual code, the guarantee we're making is just that, yes, we are indeed safe to Send or Share between threads!
+注意我们在这里必须写*unsafe impl*：它们是*不安全特征*！不安全代码（比如并发库）可以依赖我们正确地实现这些特征！既然这里没有实际代码，我们所做的保证就仅仅是：是的，我们确实可以安全地在线程之间发送或共享！
 
-Don't just slap these on lightly, but I am a Certified Professional here to say: yep there's are totally fine. Note how we don't need to implement Send and Sync for IntoIter: it just contains LinkedList, so it auto-derives Send and Sync &mdash; I told you they were actually opt out! (You opt out with the hillarious syntax of `impl !Send for MyType {}`.)
+别轻率地把这些往上一拍，不过我作为一名持证专业人士在此声明：没错，这些完全没问题。注意我们不需要为 IntoIter 实现 Send 和 Sync：它只包含一个 LinkedList，所以会自动推导出 Send 和 Sync &mdash; 我就说它们其实是选择退出的吧！（退出的语法很滑稽，是`impl !Send for MyType {}`。）
 
 ```text
 cargo build
@@ -87,11 +87,11 @@ cargo build
     Finished dev [unoptimized + debuginfo] target(s) in 0.18s
 ```
 
-Ok nice!
+好，不错！
 
-...Wait, actually it would be really dangerous if stuff that *shouldn't* be these things wasn't. In particular, IterMut *definitely* shouldn't be covariant, because it's "like" `&mut T`. But how can we check that?
+……等等，其实如果那些*不该*具备这些性质的东西却具备了，那才真的危险。特别是 IterMut，它*绝对*不该是协变的，因为它“像”`&mut T`。可我们要怎么检查这一点呢？
 
-With Magic! Well, actually, with rustdoc! Ok well we don't have to use rustdoc for this, but it's the funniest way to do it. See, if you write a doccomment and include a code block, then rustdoc will try to compile and run it, so we can use that to make fresh anonymous "programs" that don't affect the main one:
+用魔法！好吧，其实是用 rustdoc！好吧我们也不是非得用 rustdoc 干这事，但这是最有意思的做法。你看，如果你写一段文档注释并在里面放一个代码块，rustdoc 就会尝试编译并运行它，所以我们可以用它来造出全新的匿名“程序”，而不影响主程序：
 
 
 ```rust ,ignore
@@ -126,9 +126,9 @@ error[E0308]: mismatched types
              found struct `linked_list::IterMut<'_, &'static T>`
 ```
 
-Ok cool, we've proved it's invariant, but uh, now our tests fail. No worries, rustdoc lets you say that's expected by annotating the fence with compile_fail!
+好，酷，我们证明了它是不变的，可是呃，现在我们的测试失败了。别担心，rustdoc 让你可以给围栏加上 compile_fail 标注，说明这是预期之中的！
 
-(Actually we only proved it's "not covariant" but honestly if you manage to make a type "accidentaly and incorrectly contravariant" then, congrats?)
+（其实我们只证明了它“不是协变的”，不过老实说，你要是真能搞出一个“意外且错误地逆变”的类型，那，恭喜？）
 
 ```rust ,ignore
     /// ```compile_fail
@@ -155,9 +155,9 @@ test src\lib.rs - assert_properties::iter_mut_invariant (line 458) - compile fai
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
 ```
 
-Yay! I recommend always making the test without compile_fail so that you can confirm that it fails to compile *for the right reason*. For instance, that test will also fail (and therefore pass) if you forget the `use`, which, is not what we want! While it's conceptually appealing to be able to "require" a specific error from the compiler, this would be an absolute nightmare that would effectively make it a breaking change *for the compiler to produce better errors*. We want the compiler to get better, so, no you don't get to have that.
+好耶！我建议总是先写一个不带 compile_fail 的版本，这样你就能确认它是*因为正确的理由*而编译失败的。举个例子，如果你忘了写`use`，那个测试同样会失败（因而“通过”），而这可不是我们想要的！虽然从概念上讲，能够“要求”编译器给出某个特定错误听着挺诱人，可这会是一场彻头彻尾的噩梦，实际上等于让*编译器产出更好的错误信息*变成一次破坏性变更。我们希望编译器变得更好，所以，不行，你没这个待遇。
 
-(Oh wait, we can actually just specify the error code we want next to the compile_fail **but this only works on nightly and is a bad idea to rely on for the reasons state above. It will be silently ignored on not-nightly.**)
+（哦等等，我们其实可以在 compile_fail 旁边指定想要的错误码，**但这只在 nightly 上有效，而且出于上面所说的理由，依赖它是个坏主意。在非 nightly 上它会被静默忽略。**）
 
 ```rust ,ignore
     /// ```compile_fail,E0308
@@ -168,7 +168,7 @@ Yay! I recommend always making the test without compile_fail so that you can con
     fn iter_mut_invariant() {}
 ```
 
-...also, did you notice the part where we actually made IterMut invariant? It was easy to miss, since I "just" copy-pasted Iter and dumped it at the end. It's the last line here:
+……另外，你注意到我们其实已经把 IterMut 弄成不变的了吗？这很容易被漏掉，因为我“只是”复制粘贴了 Iter 然后丢在了最后。就是这儿的最后一行：
 
 ```rust ,ignore
 pub struct IterMut<'a, T> {
@@ -179,7 +179,7 @@ pub struct IterMut<'a, T> {
 }
 ```
 
-Let's try removing that PhantomData:
+我们来试着把那个 PhantomData 去掉：
 
 ```text
  cargo build
@@ -193,7 +193,7 @@ error[E0392]: parameter `'a` is never used
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 ```
 
-Ha! The compiler has our back and won't just let us *not* use the lifetime. Let's try using the *wrong* example instead:
+哈！编译器给我们兜着底，不会就这么让我们*不*使用那个生命周期。那我们改成用一个*错误的*示例试试：
 
 ```rust ,ignore
     _boo: PhantomData<&'a T>,
@@ -205,7 +205,7 @@ cargo build
     Finished dev [unoptimized + debuginfo] target(s) in 0.17s
 ```
 
-It builds! Do our tests catch a problem now?
+它编译过了！那我们的测试现在能抓到问题吗？
 
 ```text
 cargo test
@@ -228,5 +228,5 @@ failures:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
 ```
 
-Eyyy!!! The system works! I love having tests that actually do their job, so that I don't have to be quite so horrified of looming mistakes!
+耶！！！这套机制管用！我就喜欢有真正干活的测试，这样我就不必对那些若隐若现的错误那么惊恐了！
 
