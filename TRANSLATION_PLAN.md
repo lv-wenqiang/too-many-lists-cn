@@ -152,12 +152,18 @@ Completion criterion: the validator tests pass and the validator passes against 
 Keep these `book.toml` settings unchanged:
 
 ```toml
-author = "Aria Desires"
+authors = ["Aria Desires"]
 build-dir = "book"
 create-missing = false
 git-repository-url = "https://github.com/rust-unofficial/too-many-lists"
 limit-results = 30
 ```
+
+The source writes the attribution as `author = "Aria Desires"`. mdBook 0.5
+removed that spelling and accepts only `authors = [...]`, so the source book
+itself no longer builds. The target uses the array spelling to satisfy the
+`mdbook build` acceptance criterion. The credited author is unchanged; this is
+the one metadata key that deliberately differs from the source.
 
 Use these translated metadata values:
 

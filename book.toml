@@ -1,6 +1,6 @@
 [book]
 title = "用完全太多的链表学习 Rust"
-author = "Aria Desires"
+authors = ["Aria Desires"]
 description = "用完全太多的链表学习 Rust"
 
 [build]
