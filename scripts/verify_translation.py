@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-FENCE_RE = re.compile(r"^((?: {0,3}> ?| {0,3})*)(`{3,}|~{3,})([^\n]*)(\n?)$")
+FENCE_RE = re.compile(r"^((?:(?: {0,3}> ?)+| {0,3}))(`{3,}|~{3,})([^\n]*)(\n?)$")
 LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 REFERENCE_RE = re.compile(r"^\s*\[[^]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE)
