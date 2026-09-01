@@ -1,61 +1,61 @@
-# A Production-Quality Unsafe Doubly-Linked Deque
+# 一个生产级质量的不安全双向链表双端队列
 
-We finally made it. My greatests nemesis: **[std::collections::LinkedList][linked-list], the Doubly-Linked Deque**. 
+我们终于走到这一步了。我最大的宿敌：**[std::collections::LinkedList][linked-list]，双向链表双端队列**。
 
-The one that I tried and failed to destroy.
+那个我曾试图摧毁却失败了的家伙。
 
-Our story begins as 2014 was coming to a close and we were rapidly approaching the release of Rust 1.0, Rust's first stable release. I had found myself in the role of caring for `std::collections`, or as we affectionately called it in those times, libcollections.
+我们的故事始于 2014 年即将结束之时，那时我们正飞快地逼近 Rust 1.0——Rust 的第一个稳定版本——的发布。我发现自己承担起了照料`std::collections`的角色，或者用我们当年亲切的叫法，libcollections。
 
-libcollections had spent years as a dumping ground for everyone's Cute Ideas and Vaguely Useful Things. This was all well and good when Rust was a fledgling experimental language, but if my children were going to escape the nest and be stabilized, they would have to prove their worth.
+多年来，libcollections 一直是所有人“可爱点子”和“大概有点用的东西”的倾倒场。在 Rust 还是一门羽翼未丰的实验性语言时，这一切都无伤大雅；可如果我的孩子们要离巢而去、走向稳定，它们就必须证明自己的价值。
 
-Until then I had encouraged and nurtured them all, but it was now time for them to face judgement for their failings.
+在那之前，我鼓励并养育着它们所有人，但如今是时候让它们为自己的缺陷接受审判了。
 
-I sunk my claws into the bedrock and carved tombstones for my most foolish children. A grisly monument that I placed in the town square for all to see:
+我把爪子插进基岩，为我最愚蠢的那些孩子刻下墓碑。我把这座可怖的纪念碑立在城镇广场上，供所有人观瞻：
 
-**[Kill TreeMap, TreeSet, TrieMap, TrieSet, LruCache and EnumSet](https://github.com/rust-lang/rust/pull/19955)**
+**[杀掉 TreeMap、TreeSet、TrieMap、TrieSet、LruCache 和 EnumSet](https://github.com/rust-lang/rust/pull/19955)**
 
-Their fates were sealed, for my word was absolute. The other collections were horrified by my brutality, but they were not yet safe from their mother's wrath. I soon returned with two more tombstones:
+它们的命运已被封定，因为我的话就是绝对。其余的集合被我的残暴吓坏了，但它们还没能逃过母亲的雷霆之怒。不久我又带着两块墓碑回来了：
 
-**[Deprecate BitSet and BitVec](https://github.com/rust-lang/rust/pull/26034)**
+**[废弃 BitSet 和 BitVec](https://github.com/rust-lang/rust/pull/26034)**
 
-The Bit twins were more cunning than their fallen comrades, but they lacked the strength to escape me. Most thought my work done, but I soon took one more: 
+这对 Bit 双胞胎比它们倒下的同伴更狡猾，可惜没有足够的力量逃出我的手心。多数人以为我的活儿干完了，但我很快又取走了一个：
 
-**[Deprecate VecMap](https://github.com/rust-lang/rust/pull/26734)**
+**[废弃 VecMap](https://github.com/rust-lang/rust/pull/26734)**
 
-VecMap had tried to survive through stealth &mdash; it was so small and inoffensive! But that wasn't enough for the libcollections I saw in my vision of the future.
+VecMap 试图靠隐匿求生 &mdash; 它是那么小，那么人畜无害！可这对我在未来图景中所看见的那个 libcollections 来说还不够。
 
-I surveyed the land and saw what remained:
+我环视这片土地，看到还剩下些什么：
 
-* Vec and VecDeque - hearty and simple, the heart of computing.
-* HashMap and HashSet - powerful and wise, the brain of computing.
-* BTreeMap and BTreeSet - awkward but necessary, the liver of computing.
-* BinaryHeap - crafty and dextrous, the ankle of computing.
+* Vec 和 VecDeque —— 结实而简单，计算之心脏。
+* HashMap 和 HashSet —— 强大而睿智，计算之大脑。
+* BTreeMap 和 BTreeSet —— 笨拙但不可或缺，计算之肝脏。
+* BinaryHeap —— 灵巧而机敏，计算之脚踝。
 
-I nodded in contentment. Simple and effective. My work was don&mdash;
+我满意地点了点头。简单而有效。我的工作已经完&mdash;
 
-No, [DList](https://github.com/rust-lang/rust/blob/0a84308ebaaafb8fd89b2fd7c235198e3ec21384/src/libcollections/dlist.rs), it can't be! I thought you died in that tragic garbage collection incident! The one which was definitely an accident and not intentional at all!
+不，[DList](https://github.com/rust-lang/rust/blob/0a84308ebaaafb8fd89b2fd7c235198e3ec21384/src/libcollections/dlist.rs)，这不可能！我以为你死在了那场悲惨的垃圾回收事故里！那场绝对是意外、完全不是蓄意的事故！
 
-They had faked their death and taken on a new name, but it was still them: LinkedList, the shadowy and untrustworthy schemer of computing. 
+它们伪造了自己的死亡，换上了新名字，但它们还是原来那个：LinkedList，计算界那个鬼鬼祟祟、不可信任的阴谋家。
 
-I spread word of their misdeeds to all that would hear me, but hearts were unmoved. LinkedList was a silver-tongued devil who had convinced everyone around me that it was some sort of fundamental and natural datastructure of computing. It had even convinced C++ that it was [*the* list](https://en.cppreference.com/w/cpp/container/list)!
+我向所有愿意听我说话的人宣扬它们的恶行，可人心不为所动。LinkedList 是个巧舌如簧的魔鬼，它说服了我身边的每一个人，让他们相信它是某种基础而自然的计算数据结构。它甚至说服了 C++ 相信它就是[*那个*list](https://en.cppreference.com/w/cpp/container/list)！
 
-"How could you have a standard library without a *LinkedList*?"
+“一个标准库怎么能没有*LinkedList*呢？”
 
-Easily! Trivially!
+轻而易举！不费吹灰之力！
 
-"It's non-trivial unsafe code, so it makes sense to have it in the standard library!"
+“它是非平凡的不安全代码，所以把它放进标准库是合理的！”
 
-So are GPU drivers and video codecs, libcollections is minimalist!
+GPU 驱动和视频编解码器也是啊，libcollections 是极简主义的！
 
-But alas, LinkedList had gathered too many allies and grown too strong while I was distracted with its kin.
+可惜啊，在我忙着对付它的亲族时，LinkedList 已经拉拢了太多盟友，也变得太过强大。
 
-I fled to my laboratory and tried to devise some sort of [evil clone](https://github.com/contain-rs/linked-list) or [enhanced cyborg replicant](https://github.com/contain-rs/blist) that could rival and destroy it, but my grant funding ran out because my research was "too murderously evil" or somesuch nonsense.
+我逃回自己的实验室，试图炮制出某种能与之抗衡并将其摧毁的[邪恶克隆体](https://github.com/contain-rs/linked-list)或者[强化赛博格复制人](https://github.com/contain-rs/blist)，可我的科研经费被砍了，理由是我的研究“凶残邪恶得过分”之类的胡话。
 
-LinkedList had won. I was defeated and forced into exile.
+LinkedList 赢了。我被击败，被迫流亡。
 
-But you're here now. You've come this far. Surely now you can understand the depths of LinkedList's debauchery! Come, I will you show you everything you need to know to help me destroy it once and for all &mdash; everything you need to know to implement an unsafe production-quality Doubly-Linked Deque.
+但现在你来了。你已经走到了这里。此刻你想必已经能理解 LinkedList 的堕落有多深了吧！来吧，我会把你需要知道的一切都教给你，好帮我把它彻底摧毁 &mdash; 也就是实现一个不安全的、生产级质量的双向链表双端队列所需要知道的一切。
 
-How production-quality? Well we're going to completely rewrite my ancient Rust 1.0 linked-list crate, the one that is objectively better than the one in std. The one with Cursors on stable Rust, from 2015! Something the 2022 stdlib still doesn't have!
+有多“生产级”？嗯，我们要把我那个古老的 Rust 1.0 链表 crate 完全重写一遍，就是那个客观上比 std 里那个更好的库。那个在 2015 年就在稳定版 Rust 上提供了游标的库！而 2022 年的标准库至今还没有的东西！
 
 
 

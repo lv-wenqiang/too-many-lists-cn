@@ -1,6 +1,6 @@
-# Basics
+# 基础
 
-Alright, this is the part of the book that sucks, and why it took me 7 years to write this chapter! Time to just burn through a whole lot of really boring stuff we've done 5 times already, but extra verbose and long because we have to do everything twice and with `Option<NonNull<Node<T>>>`!
+好了，这就是本书里最糟心的部分，也是我花了 7 年才写出这一章的原因！是时候一口气烧穿一大堆我们已经做过 5 遍的无聊东西了，只不过这次格外啰嗦、格外冗长，因为每件事都得做两遍，而且还得带着`Option<NonNull<Node<T>>>`！
 
 ```rust ,ignore
 impl<T> LinkedList<T> {
@@ -15,7 +15,7 @@ impl<T> LinkedList<T> {
 }
 ```
 
-PhantomData is a weird type with no fields so you just make one by, saying its type name. *shrug*
+PhantomData 是个没有字段的怪类型，所以你要造一个，只需要，说出它的类型名。*耸肩*
 
 ```rust ,ignore
 pub fn push_front(&mut self, elem: T) {
@@ -54,7 +54,7 @@ error[E0614]: type `NonNull<Node<T>>` cannot be dereferenced
 ```
 
 
-Ah yes, I truly hate my pointer-y children. We need to explicitly get the raw pointer out of NonNull with `as_ptr`, because DerefMut is defined in terms of `&mut` and we don't want to randomly introduce safe references into our unsafe code!
+啊是的，我是真心讨厌我这些满是指针的孩子。我们得用`as_ptr`显式地把原始指针从 NonNull 里取出来，因为 DerefMut 是用`&mut`定义的，而我们可不想在自己的不安全代码里随随便便引入安全引用！
 
 
 ```rust ,ignore
@@ -77,7 +77,7 @@ warning: `linked-list` (lib test) generated 1 warning
     Finished test [unoptimized + debuginfo] target(s) in 0.33s
 ```
 
-Nice, now for pop (and len):
+不错，接下来是 pop（还有 len）：
 
 ```rust ,ignore
 pub fn pop_front(&mut self) -> Option<T> {
@@ -120,7 +120,7 @@ pub fn len(&self) -> usize {
     Finished dev [unoptimized + debuginfo] target(s) in 0.37s
 ```
 
-Seems legit to me, time to write a test!
+在我看来挺靠谱的，该写测试了！
 
 ```rust ,ignore
 #[cfg(test)]
@@ -181,6 +181,6 @@ test test::test_basic_front ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
-Hooray, we're perfect!
+万岁，我们完美无缺！
 
-...Right?
+……对吧？
