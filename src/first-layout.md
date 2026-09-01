@@ -44,6 +44,7 @@ error[E0072]: recursive type `first::List` has infinite size
 我冷静下来了。你冷静了么？如果我们真正去检查错误消息（而不是像我们中的某些人一样，准备逃出这个国家），我们就会发现rustc实际上在告诉我们如何解决这个问题：
 
 > insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `first::List` representable
+
 好吧，`box`。那是什么东西？让我们 google `rust box`……
 
 > [std::boxed::Box - Rust](https://doc.rust-lang.org/std/boxed/struct.Box.html)
@@ -52,8 +53,8 @@ error[E0072]: recursive type `first::List` has infinite size
 
 > `pub struct Box<T>(_);`
 >
-> A pointer type for heap allocation.
-> See the [module-level documentation](https://doc.rust-lang.org/std/boxed/) for more.
+> 一种用于堆分配的指针类型。
+> 更多内容参见[模块级文档](https://doc.rust-lang.org/std/boxed/)。
 
 *点击链接*
 

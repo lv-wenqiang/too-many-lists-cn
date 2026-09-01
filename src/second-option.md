@@ -1,7 +1,7 @@
-# Using Option
+# 使用 Option
 
-特别注意的读者可能已经注意到我们实际上重新发明了
-一个非常糟糕的Option版本：
+特别眼尖的读者可能已经注意到，我们其实是重新发明了一个非常糟糕的
+Option 版本：
 
 ```rust ,ignore
 enum Link {
@@ -10,12 +10,11 @@ enum Link {
 }
 ```
 
-链接仅为`Option<Box<Node>>`。现在，不必写信
-`Option<Box<Node>>`无处不在，与`pop`不同，我们不会公开这个
-到外面的世界，所以也许没关系。然而， Option有一些*真的
-nice *我们自己手动实现的方法。让我们*不要*
-执行此操作，并将所有内容替换为“选项”。首先，我们会天真地做
-只需将所有内容重命名为使用Some和None ：
+Link 就是`Option<Box<Node>>`。当然，不用到处写`Option<Box<Node>>`是挺舒服的，
+而且和`pop`不一样，我们并没有把它暴露给外部世界，所以也许没什么问题。
+不过 Option 有一些*非常好用*的方法，而我们一直在手动自己实现它们。
+我们就*别*这么干了，把所有东西都换成 Option。首先，我们先笨拙地来一遍，
+只是把所有东西改名成用 Some 和 None：
 
 ```rust ,ignore
 use std::mem;
@@ -67,10 +66,10 @@ impl Drop for List {
 }
 ```
 
-这稍微好一点，但大赢家将来自Option的方法。
+这只算是稍微好了一点点，真正的大收获来自 Option 的那些方法。
 
-首先， `mem::replace(&mut option, None)`是一个令人难以置信的
-option实际上只是一种方法： `take`。
+首先，`mem::replace(&mut option, None)`是一个极其常见的惯用写法，
+以至于 Option 干脆直接把它做成了一个方法：`take`。
 
 ```rust ,ignore
 pub struct List {
@@ -119,16 +118,14 @@ impl Drop for List {
 }
 ```
 
-其次， `match option { None => None, Some(x) => Some(y) }`就是这样一个
-令人难以置信的常用成语，它被称为`map`。`map`采用函数
-在`Some(x)`中的`x`上执行，在`Some(y)`中生成`y`。我们可以
-写一个合适的`fn`并将其传递给`map` ，但我们更愿意写
-做*内联*。
+其次，`match option { None => None, Some(x) => Some(y) }`也是一个极其常见的
+惯用写法，它被叫做`map`。`map`接受一个函数，在`Some(x)`里的`x`上执行它，
+从而产生出`Some(y)`里的`y`。我们本可以正儿八经写一个`fn`再把它传给`map`，
+但我们更想*就地*写出要做的事情。
 
-要做到这一点，方法是使用*闭包*。闭包是匿名函数，
-额外的超能力：他们可以引用闭包*外部*的局部变量！
-这使得它们对于执行各种条件逻辑非常有用。
-我们只做`match`的地方在`pop` ，所以让我们重写一下：
+做到这一点的办法是用*闭包*。闭包是匿名函数，还多了一项超能力：
+它们可以引用闭包*外部*的局部变量！这让它们在做各种条件逻辑时超级好用。
+我们唯一用到`match`的地方是`pop`，那就把它重写一下：
 
 ```rust ,ignore
 pub fn pop(&mut self) -> Option<i32> {
@@ -139,7 +136,7 @@ pub fn pop(&mut self) -> Option<i32> {
 }
 ```
 
-啊，好多了。让我们确保我们没有破坏任何东西：
+啊，好多了。我们来确认一下没有弄坏什么东西：
 
 ```text
 > cargo test
@@ -154,4 +151,4 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-太好了！让我们继续实际改进代码的*行为*。
+太好了！接下来我们真正去改进代码的*行为*。

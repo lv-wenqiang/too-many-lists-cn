@@ -1,12 +1,12 @@
 # IterMut
 
-说实话，IterMut 简直离谱。 Which in itself seems like a wild
-thing to say; surely it's identical to Iter!
+老实说，IterMut 简直是野的。这话本身听起来就挺野的；它不明摆着和 Iter
+一模一样吗！
 
-Semantically, yes, but 这个 nature of 共享 and 可变 references means
-that Iter 是 "trivial" while IterMut 是 Legit Wizard Magic.
+语义上确实如此，但共享引用和可变引用的本质决定了：Iter 是“平凡的”，
+而 IterMut 则是货真价实的巫师魔法。
 
-这个 key insight comes 从 our 实现 of Iterator for Iter:
+关键的洞见来自我们为 Iter 实现的 Iterator：
 
 ```rust ,ignore
 impl<'a, T> Iterator for Iter<'a, T> {
@@ -16,7 +16,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 }
 ```
 
-Which 可以 be desugared to:
+它可以去糖展开成：
 
 ```rust ,ignore
 impl<'a, T> Iterator for Iter<'a, T> {
@@ -26,9 +26,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
 }
 ```
 
-这个 signature of `next` establishes *no* constraint between 这个 生命周期
-of 这个 输入 and 这个 输出! Why do 我们 care? It means 我们 可以 call `next`
-反复 and 反复 unconditionally!
+`next`的签名在输入和输出的生命周期之间*没有*建立任何约束！
+我们为什么要在意这个？因为这意味着我们可以无条件地一次又一次调用`next`！
 
 
 ```rust ,ignore
@@ -43,15 +42,13 @@ let z = iter.next().unwrap();
 
 酷！
 
-这 是 *definitely 没问题* for 共享 references 因为 这个 whole point 是 that
-你 可以 have tons of them at once. However 可变 references *can't* coexist.
-这个 whole point 是 that they're exclusive.
+对共享引用来说这*完全没问题*，因为共享引用的意义就在于你可以同时拥有一大堆。
+然而可变引用*不能*共存。它们的意义恰恰在于独占。
 
-这个 end result 是 that it's notably harder to 写出 IterMut 使用 安全
-代码 (and 我们 haven't gotten 进入 什么 that even means yet...). Surprisingly,
-IterMut 可以 实际上 be implemented for many structures completely safely!
+最终的结果是，用安全代码写 IterMut 要困难得多（而我们甚至还没开始讲那到底
+意味着什么……）。令人惊讶的是，IterMut 其实可以为许多结构完全安全地实现出来！
 
-We'll start by 只是 taking 这个 Iter 代码 and changing everything to be 可变:
+我们先把 Iter 的代码拿过来，把所有东西都改成可变的：
 
 ```rust ,ignore
 pub struct IterMut<'a, T> {
@@ -93,9 +90,9 @@ error[E0507]: cannot move out of borrowed content
     |         ^^^^^^^^^ cannot move out of borrowed content
 ```
 
-Ok looks like we've got two 不同 errors here. 这个 首先 one looks 非常 清楚
-though, it even tells us 如何 to fix it! 你 can't upgrade a 共享 引用 to a 可变
-one, so `iter_mut` needs to take `&mut self`. Just a silly copy-paste 错误.
+好吧，看起来我们这儿有两个不同的错误。不过第一个看着相当清楚，它甚至直接
+告诉了我们该怎么修！你没法把共享引用升级成可变引用，所以`iter_mut`需要接受
+`&mut self`。不过是个傻乎乎的复制粘贴错误。
 
 ```rust ,ignore
 pub fn iter_mut(&mut self) -> IterMut<'_, T> {
@@ -103,34 +100,29 @@ pub fn iter_mut(&mut self) -> IterMut<'_, T> {
 }
 ```
 
-What about 这个 其他 one?
+那另一个呢？
 
-糟糕！ I 实际上 accidentally made an 错误 当 writing 这个 `iter` impl in
-这个 previous section, and 我们 were 只是 getting lucky that it worked!
+哎呀！其实我在上一节写`iter`的实现时不小心犯了个错误，
+而我们只是走运，它碰巧能用！
 
-我们 have 只是 had our 首先 run in 使用 这个 magic of Copy. When 我们 introduced [所有权][所有权] 我们
-said that 当 你 move stuff, 你 can't use it anymore. For 一些 types, 这
-makes perfect sense. Our 好 friend Box manages an allocation on 这个 heap for
-us, and 我们 certainly don't 想要 two pieces of 代码 to think that they 需要 to
-free its memory.
+我们刚刚第一次撞上了 Copy 的魔法。在介绍[所有权][ownership]时我们说过，
+当你移动了东西之后就不能再用它了。对某些类型来说，这完全说得通。
+我们的好朋友 Box 替我们管理着堆上的一块分配，我们当然不希望有两段代码
+都以为自己需要去释放它的内存。
 
-However for 其他 types 这 是 *garbage*. Integers have no
-所有权 semantics; they're 只是 meaningless numbers! 这 是 为什么 integers 是
-marked as Copy. Copy types 是 known to be perfectly copyable by a bitwise copy.
-As such, they have a super power: 当 moved, 这个 旧 值 *是* 仍然 usable.
-As a consequence, 你 可以 even move a Copy type 出 of a 引用 不使用
-replacement!
+但对另一些类型来说，这就是*扯淡*了。整数没有所有权语义；它们不过是些没有
+意义的数字！这就是整数被标记为 Copy 的原因。Copy 类型是那些已知可以通过
+按位拷贝完美复制的类型。因此它们有一项超能力：被移动之后，旧的值*仍然*可用。
+其结果是，你甚至可以把一个 Copy 类型从引用中移出来，还不用做任何替换！
 
-All numeric primitives in Rust (i32, u64, bool, f32, char, etc...) 是 Copy.
-你 可以 也 declare any user-defined type to be Copy as well, as long as
-所有 its components 是 Copy.
+Rust 中所有的数值原始类型（i32、u64、bool、f32、char 等等）都是 Copy 的。
+你也可以把任何自定义类型声明为 Copy，只要它的所有组成部分都是 Copy 的。
 
-Critically to 为什么 这 代码 was working, 共享 references 是 也 Copy!
-Because `&` 是 copy, `Option<&>` 是 *也* Copy. So 当 我们 did `self.next.map` it
-was 没问题 因为 这个 Option was 只是 copied. Now 我们 can't do that, 因为
-`&mut` isn't Copy (if 你 copied an &mut, you'd have two &mut's to 这个 相同
-location in memory, which 是 forbidden). Instead, 我们 应该 properly `take`
-这个 Option to get it.
+而这段代码之所以能跑通，关键在于：共享引用也是 Copy 的！因为`&`是 Copy 的，
+所以`Option<&>`*也*是 Copy 的。于是我们写`self.next.map`时没出问题，
+因为那个 Option 只是被拷贝了一份。现在我们不能这么干了，因为`&mut`不是 Copy 的
+（如果你拷贝了一个 &mut，你就会有两个指向同一块内存位置的 &mut，这是被禁止的）。
+取而代之，我们应该老老实实地`take`那个 Option 来把它拿到手。
 
 
 ```rust ,ignore
@@ -147,9 +139,9 @@ fn next(&mut self) -> Option<Self::Item> {
 
 ```
 
-呃……哇。我的天！IterMut 居然直接就能工作！
+呃……哇。我的天！IterMut 居然就这么好使了！
 
-测试一下：
+我们来测试一下：
 
 
 ```rust ,ignore
@@ -182,31 +174,28 @@ test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-没错，它能工作。
+没错。它能用。
 
-Holy shit.
+我的天。
 
-什么。
+啥。
 
-Ok I mean it 实际上 *是* supposed to 工作, but there's usually something
-stupid that gets in 这个 way! 这里需要明确一点：
+好吧，我是说它本来*就该*能用，只是通常总会有些蠢事横插一杠！
+我们把话说清楚：
 
-我们 have 只是 implemented a piece of 代码 that takes a singly-linked 列表, and
-returns a 可变 引用 to 每个 single 元素 in 这个 列表 at most once.
-And it's statically verified to do that. And it's totally 安全. And 我们 didn't
-have to do anything wild.
+我们刚刚实现了这样一段代码：它接受一个单向链表，并且对链表中的每一个元素
+最多返回一次可变引用。而且这一点是经过静态验证的。而且它完全安全。
+而且我们没干任何出格的事。
 
-依我看，这可是件大事。 There 是 a couple reasons 为什么
-这 工作:
+要我说，这可是件大事。它之所以行得通，有这么几个原因：
 
-* 我们 `take` 这个 `Option<&mut>` so 我们 have exclusive access to 这个 可变
-  引用. No 需要 to worry about someone looking at it 再次.
-* Rust understands that it's ok to shard a 可变 引用 进入 这个 subfields
-  of 这个 pointed-to struct, 因为 there's no way to "go back up", and they're
-  definitely disjoint.
+* 我们`take`了那个`Option<&mut>`，因此我们独占地持有这个可变引用。
+  不用担心还有谁会再去看它一眼。
+* Rust 明白，把一个可变引用拆分到它所指向的结构体的各个子字段上是没问题的，
+  因为没有办法“往回走”，而且这些子字段肯定是互不相交的。
 
-事实证明，这个基本思路也可以应用于 to get a 安全 IterMut for an
-array or a tree as well! 你 可以 even make 这个 迭代器 DoubleEnded, so that
-你 可以 consume 这个 迭代器 从 这个 front *and* 这个 back at once! 哇！
+事实证明，你也可以把这套基本逻辑套用到数组或者树上，得到一个安全的 IterMut！
+你甚至可以把这个迭代器做成 DoubleEnded 的，这样你就能同时从前端*和*后端
+消耗它了！哇哦！
 
-[所有权]: first-ownership.md
+[ownership]: first-ownership.md

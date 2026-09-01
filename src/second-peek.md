@@ -1,8 +1,8 @@
-偷看
+# 查看
 
-上次我们甚至没有费心去实施的一件事就是偷看。我们走吧
-并做到这一点。我们只需要返回对中元素的引用
-列表的头部（如果存在）。听起来很简单，让我们试试：
+上一次我们压根没费心去实现的一件事就是查看（peek）。这回我们把它做了。
+我们要做的只是返回一个指向链表头部元素的引用（如果它存在的话）。
+听起来很简单，来试试：
 
 ```rust ,ignore
 pub fn peek(&self) -> Option<&T> {
@@ -31,12 +31,11 @@ error[E0507]: cannot move out of borrowed content
 
 ```
 
-* 叹气*。现在怎么办，拉斯特？
+*叹气*。这回又怎么了，Rust？
 
-Map按值获取`self` ，这将将Option移出它所在的内容。
-以前这很好，因为我们只是`take`n出来了，但现在我们实际上
-想把它留在原地。处理此问题的*正确*方法是使用
-Option上的`as_ref`方法，其定义如下：
+map 按值获取`self`，这会把 Option 从它所在的地方移出来。以前这没问题，
+因为我们刚刚才用`take`把它取出来过；但现在我们其实是想让它留在原地。
+处理这件事的*正确*方式是用 Option 上的`as_ref`方法，它的定义如下：
 
 ```rust ,ignore
 impl<T> Option<T> {
@@ -44,10 +43,9 @@ impl<T> Option<T> {
 }
 ```
 
-它将`Option<T>`降级为引用其内部的Option。我们可以
-用显式匹配自己做，但*呃不*。这确实意味着我们
-需要做一个额外的dereference来切断额外的间接，但是
-谢天谢地， `.`运营商为我们处理了这个问题。
+它把`Option<T>`降级成一个指向其内部的引用的 Option。我们本可以用一个显式的
+match 自己来做，但*算了吧*。这确实意味着我们需要多做一次解引用来穿透多出来的
+那层间接，不过谢天谢地，`.`运算符替我们处理了这件事。
 
 
 ```rust ,ignore
@@ -64,9 +62,9 @@ cargo build
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
 ```
 
-搞定了！
+搞定收工。
 
-我们还可以使用`as_mut`创建此方法的*可变*版本：
+我们还可以用`as_mut`做出这个方法的*可变*版本：
 
 ```rust ,ignore
 pub fn peek_mut(&mut self) -> Option<&mut T> {
@@ -81,9 +79,9 @@ pub fn peek_mut(&mut self) -> Option<&mut T> {
 
 ```
 
-EZ
+轻松。
 
-别忘了测试一下：
+别忘了测试它：
 
 ```rust ,ignore
 #[test]
@@ -112,7 +110,7 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-这很好，但我们并没有真正测试是否可以改变`peek_mut`返回值，不是吗？如果一个引用是可变的，但没有人改变它，我们真的测试过可变性吗？让我们尝试在这个`Option<&mut T>`上使用`map`来给出深刻的价值：
+这挺好，可是我们并没有真正测试过能不能修改`peek_mut`返回的那个值，对吧？如果一个引用是可变的却没人去改它，我们真的算测试过可变性了吗？我们来试试在这个`Option<&mut T>`上用`map`，往里面塞一个意味深长的值：
 
 ```rust ,ignore
 #[test]
@@ -148,7 +146,7 @@ error[E0384]: cannot assign twice to immutable variable `value`
     |             ^^^^^^^^^^ cannot assign twice to immutable variable          ^~~~~
 ```
 
-QUERY LENGTH LIMIT EXCEEDED. MAX ALLOWED QUERY : 500 CHARS
+编译器抱怨说`value`是不可变的，可我们明明白白写的是`&mut value`啊，这是怎么回事？原来，把闭包的参数写成那样并不是在声明`value`是一个可变引用。相反，它构造了一个用来匹配闭包实参的模式；`|&mut value|`的意思是“这个实参是一个可变引用，但麻烦你把它指向的值拷贝到`value`里”。如果我们只写`|value|`，那么`value`的类型就会是`&mut i32`，我们也就真的能修改头部了：
 
 ```rust ,ignore
     #[test]
@@ -184,4 +182,4 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-好得多
+好多了！

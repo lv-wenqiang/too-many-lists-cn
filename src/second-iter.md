@@ -1,13 +1,12 @@
 # Iter
 
-好了，让我们尝试实现 Iter。 这 time 我们 won't be able to rely on
-List giving us 所有 这个 features 我们 想要. 我们需要自己实现它。 这个
-basic 逻辑 我们 想要 是 to hold a 指针 to 这个 current 节点 我们 想要 to yield
-next. Because that 节点 may not exist (这个 列表 是 empty or we're otherwise
-done iterating), 我们 想要 that 引用 to be an Option. When 我们 yield an
-元素, 我们 想要 to proceed to 这个 current node's `next` 节点.
+好了，我们来试着实现 Iter。这一次我们没法指望 List 把我们想要的功能都提供好，
+得自己动手了。我们想要的基本逻辑是：持有一个指针，指向下一次要产出的那个当前
+节点。因为那个节点可能并不存在（链表是空的，或者我们已经迭代完了），
+所以我们希望这个引用是一个 Option。每当产出一个元素，
+我们就前进到当前节点的`next`节点。
 
-好了，试试看：
+好了，来试试看：
 
 ```rust ,ignore
 pub struct Iter<T> {
@@ -48,10 +47,10 @@ error[E0106]: missing lifetime specifier
    |                 ^ expected lifetime parameter
 ```
 
-天啊，生命周期。 我听说过这东西，据说简直是噩梦。
+老天。生命周期。我听说过这玩意儿。听说它们是噩梦。
 
-Let's try something 新: see that `error[E0106]` thing? That's a 编译器 错误
-代码. 我们 可以 ask rustc to explain those 使用, well, `--explain`:
+我们来试点新东西：看到那个`error[E0106]`了吗？那是一个编译器错误码。
+我们可以让 rustc 解释它们，用的就是`--explain`：
 
 ```text
 > rustc --explain E0106
@@ -73,9 +72,8 @@ type MyStr<'a> = &'a str; //correct
 
 ```
 
-That uh... that didn't 非常 clarify much (these docs assume 我们 understand
-Rust better than 我们 currently do). But it looks like 我们 应该 add
-those `'a` things to our struct? Let's try that.
+那个……呃，那并没有解释清楚多少（这些文档默认我们对 Rust 的理解比现在要好）。
+不过看起来我们应该把那些`'a`加到结构体上？来试试。
 
 ```rust ,ignore
 pub struct Iter<'a, T> {
@@ -101,8 +99,7 @@ error[E0106]: missing lifetime specifier
 error: aborting due to 2 previous errors
 ```
 
-Alright I'm starting to see a pattern here... let's 只是 add these little guys
-to everything 我们 可以:
+好吧，我开始看出规律了……我们干脆把这些小家伙加到所有能加的地方：
 
 ```rust ,ignore
 pub struct Iter<'a, T> {
@@ -148,58 +145,47 @@ error[E0063]: missing field `next` in initializer of `second::Iter<'_, _>`
    |         ^^^^ missing `next`
 ```
 
-Oh god. 我们 broke Rust.
+老天。我们把 Rust 弄坏了。
 
-也许我们该真正弄清楚，这个 `'a` 生命周期 stuff
-到底是什么意思。
+也许我们真该搞清楚这个`'a`生命周期到底是个什么鬼东西。
 
-Lifetimes 可以 scare off a lot of people 因为
-they're a change to something we've known and loved since 这个 dawn of
-programming. We've 实际上 managed to dodge 生命周期 so far, even though
-they've been tangled throughout our programs 这 whole time.
+生命周期能把很多人吓跑，因为它改变了我们自编程诞生之初就熟知并热爱的某样东西。
+其实到目前为止我们一直设法躲开了生命周期，尽管它们自始至终都缠绕在我们的
+程序里。
 
-Lifetimes 是 unnecessary in garbage collected languages 因为 这个 garbage
-collector ensures that everything magically lives as long as it needs to. Most
-data in Rust 是 *manually* managed, so that data needs another solution. C and
-C++ give us a 清楚 example 什么 happens if 你 只是 let people take pointers
-to random data on 这个 栈: pervasive unmanageable unsafety. 这 可以 be
-roughly separated 进入 two classes of 错误:
+在垃圾回收语言里生命周期是不必要的，因为垃圾回收器保证了一切都会魔法般地
+活得足够久。而 Rust 中的大多数数据是*手动*管理的，所以这些数据需要另一套方案。
+C 和 C++ 给了我们一个清楚的例子，说明如果放任人们随手获取指向栈上任意数据的
+指针会发生什么：无处不在、无法收拾的不安全。这大致可以分为两类错误：
 
-* Holding a 指针 to something that went 出 of 作用域
-* Holding a 指针 to something that got mutated away
+* 持有一个指向已经离开作用域的东西的指针
+* 持有一个指向已经被改掉的东西的指针
 
-生命周期解决了这两个问题, and 99% of 这个 time, they do 这 in
-a totally transparent way.
+生命周期解决了这两个问题，而且在 99% 的时间里，它们是以完全透明的方式做到的。
 
-那么，什么是生命周期？
+那么，生命周期到底是什么？
 
-Quite simply, a 生命周期 是 这个 name of a region (\~block/作用域) of 代码 somewhere in a program.
-就是这样。 When a 引用 是 tagged 使用 a 生命周期, we're saying that it
-has to be valid for that *entire* region. Different things place requirements on
-如何 long a 引用 must and 可以 be valid for. 这个 entire 生命周期 system 是 in
-turn 只是 a constraint-solving system that tries to minimize 这个 region of 每个
-引用. If it successfully finds a set of 生命周期 that satisfies 所有 这个
-constraints, your program compiles! Otherwise 你 get an 错误 back saying that
-something didn't live long enough.
+很简单，生命周期就是程序中某处一段代码区域（\~代码块/作用域）的名字。
+就这么回事。当一个引用被标上某个生命周期时，我们是在说它必须在那*整个*区域内
+都保持有效。不同的东西会对一个引用必须、以及能够保持有效多久提出各自的要求。
+而整个生命周期系统，说到底不过是一个约束求解系统，它试图把每个引用的区域
+最小化。如果它成功找到了一组满足所有约束的生命周期，你的程序就能编译通过！
+否则你就会收到一个错误，说某个东西活得不够久。
 
-Within a 函数 body 你 generally can't talk about 生命周期, and wouldn't
-想要 to *anyway*. 这个 编译器 has full information and 可以 infer 所有 这个
-constraints to find 这个 minimum 生命周期. However at 这个 type and API-level,
-这个 编译器 *doesn't* have 所有 这个 information. It requires 你 to tell it
-about 这个 relationship between 不同 生命周期 so it 可以 figure 出 什么
-you're doing.
+在函数体内部你通常没法谈论生命周期，而且*反正*你也不会想谈。编译器掌握着完整
+信息，能够推断出所有约束，找到最小的生命周期。然而在类型和 API 层面，
+编译器*并没有*掌握全部信息。它需要你告诉它不同生命周期之间的关系，
+这样它才能搞清楚你在干什么。
 
-In principle, those 生命周期 *could* 也 be left 出, but
-then checking 所有 这个 borrows 会 be a huge whole-program analysis that 会
-produce mind-bogglingly non-local errors. Rust's system means 所有 借用
-checking 可以 be done in 每个 函数 body independently, and 所有 your errors
-应该 be fairly local (or your types have incorrect signatures).
+原则上，那些生命周期*也可以*被省略掉，但那样一来，检查所有借用就会变成一次
+庞大的全程序分析，产生出令人匪夷所思的、毫无局部性可言的错误。Rust 的这套体系
+意味着所有借用检查都可以在每个函数体内独立完成，你遇到的所有错误都应该相当
+局部（否则就是你的类型签名写错了）。
 
-But we've written references in 函数 signatures 之前, and it was 没问题!
-That's 因为 there 是 certain cases that 是 so 常见 that Rust 将
-automatically pick 这个 生命周期 for 你. 这 是 *生命周期 elision*.
+可我们之前也在函数签名里写过引用啊，而且好好的！那是因为有些情形实在太常见了，
+以至于 Rust 会自动替你挑好生命周期。这就是*生命周期省略*。
 
-In particular:
+具体来说：
 
 ```rust ,ignore
 // Only one reference in input, so the output must be derived from that input
@@ -215,19 +201,17 @@ fn foo(&self, &B, &C) -> &D; // sugar for:
 fn foo<'a, 'b, 'c>(&'a self, &'b B, &'c C) -> &'a D;
 ```
 
-So 什么 does `fn foo<'a>(&'a A) -> &'a B` *mean*? In practical terms, 所有 it
-means 是 that 这个 输入 must live at least as long as 这个 输出. So if 你 keep
-这个 输出 周围 for a long time, 这 将 expand 这个 region that 这个 输入 must
-be valid for. Once 你 stop 使用 这个 输出, 这个 编译器 将 know it's ok for
-这个 输入 to become invalid too.
+那么`fn foo<'a>(&'a A) -> &'a B`到底*意味着*什么？实际上，它的全部含义就是：
+输入至少要和输出活得一样久。所以如果你把输出留在身边很长时间，
+这就会扩大输入必须保持有效的区域。一旦你不再使用输出，
+编译器就知道输入也可以随之失效了。
 
-With 这 system set up, Rust 可以 ensure nothing 是 used 之后 free, and nothing
-是 mutated while outstanding references exist. It 只是 makes sure 这个
-constraints 所有 工作 出!
+有了这套体系，Rust 就能保证不会有释放后使用，也不会在还有未了结的引用时
+去修改东西。它要做的就是确保所有约束都能对上！
 
-Alright. So. Iter.
+好了。那么。Iter。
 
-Let's roll back to 这个 no 生命周期 state:
+我们回退到没有生命周期的状态：
 
 ```rust ,ignore
 pub struct Iter<T> {
@@ -251,7 +235,7 @@ impl<T> Iterator for Iter<T> {
 }
 ```
 
-我们 需要 to add 生命周期 仅 in 函数 and type signatures:
+我们只需要在函数和类型签名里加上生命周期：
 
 ```rust ,ignore
 // Iter is generic over *some* lifetime, it doesn't care
@@ -285,7 +269,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 }
 ```
 
-Alright, I think 我们 got it 这 time y'all.
+好了，我觉得这回咱们成了。
 
 ```text
 cargo build
@@ -311,10 +295,10 @@ error[E0308]: mismatched types
 
 (╯°□°)╯︵ ┻━┻
 
-OK. SO. 我们 fixed our 生命周期 errors but 现在 we're getting 一些 新 type errors.
+好。吧。我们修好了生命周期错误，但现在又冒出来一些新的类型错误。
 
-我们 想要 to be storing `&Node`'s, but we're getting `&Box<Node>`s. Ok, that's 简单
-enough, 我们 只是 需要 to dereference 这个 Box 之前 我们 take our 引用:
+我们想存的是`&Node`，但拿到的却是`&Box<Node>`。行吧，这够简单的，
+我们只要在取引用之前先把 Box 解引用一下：
 
 ```rust ,ignore
 impl<T> List<T> {
@@ -364,8 +348,8 @@ error[E0507]: cannot move out of borrowed content
 
 (ﾉಥ益ಥ）ﾉ﻿ ┻━┻
 
-我们 forgot `as_ref`, so we're moving 这个 box 进入 `map`, which means it 会
-be dropped, which means our references 会 be dangling:
+我们忘了`as_ref`，于是就把 box 移动进了`map`，这意味着它会被丢弃，
+也就意味着我们的引用会变成悬垂的：
 
 ```rust ,ignore
 pub struct Iter<'a, T> {
@@ -415,7 +399,7 @@ error[E0308]: mismatched types
 
 😭
 
-`as_ref` added another layer of indirection 我们 需要 to remove:
+`as_ref`又加了一层我们需要去掉的间接：
 
 
 ```rust ,ignore
@@ -448,42 +432,41 @@ cargo build
 
 🎉 🎉 🎉
 
-这个 as_deref and as_deref_mut functions 是 stable as of Rust 1.40. Before that 你
-会 需要 to do `map(|node| &**node)` and `map(|node| &mut**node)`.
-你 may be thinking "wow that `&**` thing 是 非常 janky", and you're not 错误,
-but like a 没问题 wine Rust gets better 反复 time and 我们 no longer 需要 to do such.
-Normally Rust 是 非常 好 at doing 这 kind of conversion implicitly, through
-a process 称为 *deref coercion*, 哪里 basically it 可以 insert \*'s
-throughout your 代码 to make it type-check. It 可以 do 这 因为 我们 have 这个
-借用 checker to ensure 我们 never mess up pointers!
+as_deref 和 as_deref_mut 函数从 Rust 1.40 起就稳定了。在那之前你得写
+`map(|node| &**node)`和`map(|node| &mut**node)`。你可能会想“哇那个`&**`
+真是别扭得很”，你没想错，不过 Rust 就像好酒一样会随时间变得更好，
+我们已经不需要那么写了。通常 Rust 非常擅长隐式地做这类转换，
+靠的是一个叫做*解引用强制转换*的过程，基本上它能在你的代码里到处插入 \*，
+好让类型检查通过。它之所以能这么干，是因为我们有借用检查器来确保
+永远不会把指针搞乱！
 
-But in 这 case 这个 闭包 in conjunction 使用 这个 fact that 我们
-have an `Option<&T>` instead of `&T` 是 a bit too complicated for it to 工作
-出, so 我们 需要 to help it by being explicit. Thankfully 这 是 pretty rare, in my experience.
+但在这个例子里，闭包再加上我们手里是`Option<&T>`而不是`&T`这一事实，
+对它来说有点太复杂了，搞不定，所以我们得写明白一点来帮帮它。
+好在按我的经验，这种情况相当少见。
 
-Just for completeness' sake, 我们 *could* give it a *不同* hint 使用 这个 *turbofish*:
+纯粹为了完整起见，我们*可以*用*涡轮鱼*给它一个*不同的*提示：
 
 ```rust ,ignore
     self.next = node.next.as_ref().map::<&Node<T>, _>(|node| &node);
 ```
 
-See, map 是 a 泛型 函数:
+你看，map 是一个泛型函数：
 
 ```rust ,ignore
 pub fn map<U, F>(self, f: F) -> Option<U>
 ```
 
-这个 turbofish, `::<>`, lets us tell 这个 编译器 什么 我们 think 这个 types of those
-generics 应该 be. In 这 case `::<&Node<T>, _>` says "it 应该 返回 a
-`&Node<T>`, and I don't know/care about that 其他 type".
+涡轮鱼，也就是`::<>`，让我们能告诉编译器我们认为那些泛型参数的类型应该是什么。
+在这里`::<&Node<T>, _>`说的是“它应该返回一个`&Node<T>`，
+另外那个类型我不知道，也不关心”。
 
-这 in turn lets 这个 编译器 know that `&node` 应该 have deref coercion
-applied to it, so 我们 don't 需要 to manually apply 所有 those \*'s!
+这反过来让编译器知道`&node`上应该施加解引用强制转换，
+于是我们就不用手动去加那一堆 \* 了！
 
-But in 这 case I don't think it's 非常 an improvement, 这 was 只是 a
-thinly veiled excuse to show off deref coercion and 这个 sometimes-useful turbofish. 😅
+不过在这个例子里，我觉得这算不上什么改进，这不过是个拙劣的借口，
+好让我炫一下解引用强制转换和偶尔有用的涡轮鱼罢了。😅
 
-Let's 写出 a 测试 to be sure 我们 didn't no-op it or anything:
+我们来写个测试，确认没把它写成空操作之类的：
 
 ```rust ,ignore
 #[test]
@@ -514,9 +497,9 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured
 
 ```
 
-Heck yeah.
+爽。
 
-最后， it 应该 be noted that 我们 *可以* 实际上 apply 生命周期 elision here:
+最后需要指出的是，我们其实*可以*在这里应用生命周期省略：
 
 ```rust ,ignore
 impl<T> List<T> {
@@ -526,7 +509,7 @@ impl<T> List<T> {
 }
 ```
 
-是 equivalent to:
+等价于：
 
 ```rust ,ignore
 impl<T> List<T> {
@@ -536,10 +519,10 @@ impl<T> List<T> {
 }
 ```
 
-太好了，生命周期更少了！
+耶，生命周期变少了！
 
-Or, if you're not comfortable "hiding" that a struct contains a 生命周期,
-你 可以 use 这个 Rust 2018 "explicitly elided 生命周期" syntax,  `'_`:
+或者，如果你不太喜欢把“结构体里含有生命周期”这件事“藏起来”，
+可以使用 Rust 2018 的“显式省略生命周期”语法，也就是`'_`：
 
 ```rust ,ignore
 impl<T> List<T> {
