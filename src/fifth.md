@@ -1,20 +1,17 @@
-# An Ok Unsafe Singly-Linked Queue
+# 一个还行的不安全单向链表队列
 
-Ok that reference-counted interior mutability stuff got a little out of
-control. Surely Rust doesn't really expect you to do that sort of thing
-in general? Well, yes and no. Rc and Refcell can be great for handling
-simple cases, but they can get unwieldy. Especially if you
-want to hide that it's happening. There's gotta be a better way!
+好吧，刚才那套引用计数加内部可变性的玩意儿有点失控了。Rust 总不至于真指望你
+平时就干这种事吧？嗯，既是也不是。Rc 和 RefCell 在处理简单情形时可以非常好用，
+但它们也会变得笨重。尤其是当你想把这一切藏起来的时候。肯定有更好的办法！
 
-In this chapter we're going to roll back to singly-linked lists and
-implement a singly-linked queue to dip our toes into *raw pointers*
-and *Unsafe Rust*.
+在这一章里，我们要退回到单向链表，实现一个单向链表队列，
+借此把脚趾伸进*原始指针*和*不安全 Rust*的水里试试温度。
 
-> **NARRATOR:** And I will point out the mistakes.
+> **旁白：**而我会把那些错误一一指出来。
 
-And we won't make *any* mistakes.
+而我们*一个*错误都不会犯。
 
-Let's add a new file called `fifth.rs`:
+让我们添加一个名为`fifth.rs`的新文件：
 
 ```rust ,ignore
 // in lib.rs
@@ -26,7 +23,6 @@ pub mod fourth;
 pub mod fifth;
 ```
 
-Our code is largely going to be derived from second.rs, since a queue is
-mostly an augmentation of a stack in the world of linked lists. Still, we're
-going to go from scratch because there's some fundamental issues we want to
-address with layout and what-not.
+我们的代码大体上会从 second.rs 演化而来，因为在链表的世界里，队列基本上就是
+栈的一个增强版。不过我们还是要从头开始写，因为在布局之类的问题上，
+有一些根本性的东西是我们想要解决的。

@@ -1,10 +1,10 @@
-# Basics
+# 基础
 
-> **NARRATOR:** This section has a looming fundamental error in it, because that's the whole point of the book. However once we start using `unsafe` it's possible to do things wrong and still have everything compile and *seemingly* work. The fundamental mistake will be identified in the next section. Don't actually use the contents of this section in production code!
+> **旁白：**本节里潜伏着一个根本性的错误，因为这正是本书的意义所在。不过一旦我们开始用`unsafe`，就有可能做错了事情却依然能编译通过、而且*看上去*还能正常工作。这个根本性错误将在下一节被揪出来。千万不要把本节的内容直接用到生产代码里！
 
-Alright, back to basics. How do we construct our list?
+好了，回到基础。我们要怎么构造我们的链表呢？
 
-Before we just did:
+以前我们是这么做的：
 
 ```rust ,ignore
 impl<T> List<T> {
@@ -14,7 +14,7 @@ impl<T> List<T> {
 }
 ```
 
-But we're not using Option for the `tail` anymore:
+但我们现在不再给`tail`用 Option 了：
 
 ```text
 > cargo build
@@ -30,13 +30,11 @@ error[E0308]: mismatched types
               found type `std::option::Option<_>`
 ```
 
-We *could* use an Option, but unlike Box, `*mut` *is* nullable. This means it
-can't benefit from the null pointer optimization. Instead, we'll be using `null`
-to represent None.
+我们*本可以*用 Option，但和 Box 不同，`*mut`本身*就是*可空的。这意味着它没法
+从空指针优化中获益。因此我们将改用`null`来表示 None。
 
-So how do we get a null pointer? There's a few ways, but I prefer to use
-`std::ptr::null_mut()`. If you want, you can also use `0 as *mut _`, but that
-just seems so *messy*.
+那我们怎么弄到一个空指针呢？办法有几个，不过我更喜欢用`std::ptr::null_mut()`。
+你要是愿意，也可以写`0 as *mut _`，但那看起来实在太*脏*了。
 
 ```rust ,ignore
 use std::ptr;
@@ -80,24 +78,22 @@ warning: field is never used: `head`
    |     ^^^^^^^^^^^^^
 ```
 
-*shush* compiler, we will use them soon.
+*嘘*，编译器，我们马上就会用到它们了。
 
-Alright, let's move on to writing `push` again. This time, instead of grabbing
-an `Option<&mut Node<T>>` after we insert, we're just going to grab a
-`*mut Node<T>` to the insides of the Box right away. We know we can soundly do
-this because the contents of a Box has a stable address, even if we move the
-Box around. Of course, this isn't *safe*, because if we just drop the Box we'll
-have a pointer to freed memory.
+好了，我们继续来写`push`。这一次，我们不再在插入之后去抓一个
+`Option<&mut Node<T>>`，而是直接抓一个指向 Box 内部的`*mut Node<T>`。
+我们知道这么做在原理上是站得住脚的，因为 Box 的内容有着稳定的地址，
+即便我们把 Box 搬来搬去也一样。当然，这并不*安全*，
+因为如果我们把 Box 丢弃了，手里就会剩下一个指向已释放内存的指针。
 
-How do we make a raw pointer from a normal pointer? Coercions! If a variable
-is declared to be a raw pointer, a normal reference will coerce into it:
+怎么从一个普通指针造出原始指针呢？靠强制转换！如果一个变量被声明为原始指针，
+那么普通引用就会被强制转换成它：
 
 ```rust ,ignore
 let raw_tail: *mut _ = &mut *new_tail;
 ```
 
-We have all the info we need. We can translate our code into, approximately,
-the previous reference version:
+我们需要的信息都齐了。可以把代码大致翻译成之前那个引用版本的样子：
 
 ```rust ,ignore
 pub fn push(&mut self, elem: T) {
@@ -134,11 +130,10 @@ error[E0609]: no field `next` on type `*mut fifth::Node<T>`
    |             try dereferencing it: `(*self.tail).next`
 ```
 
-Huh? We have a pointer to a Node, why can't we get the `next` field?
+啊？我们手里有一个指向 Node 的指针，为什么拿不到`next`字段？
 
-Rust is kinda a jerk when you use raw pointers. To access the contents of a
-raw pointer, it insists that we manually deref them, because it's such an unsafe
-operation. So let's do that:
+在你使用原始指针的时候，Rust 有点混蛋。要访问原始指针的内容，
+它坚持要我们手动解引用，因为这是个非常不安全的操作。那我们就照做：
 
 ```rust ,ignore
 *self.tail.next = Some(new_tail);
@@ -157,7 +152,7 @@ error[E0609]: no field `next` on type `*mut fifth::Node<T>`
    |             try dereferencing it: `(*self.tail).next`
 ```
 
-Uuuugh operator precedence.
+呜呜呜，运算符优先级。
 
 ```rust ,ignore
 (*self.tail).next = Some(new_tail);
@@ -179,15 +174,13 @@ error[E0133]: dereference of raw pointer is unsafe and requires
      all of these are undefined behavior
 ```
 
-THIS. SHOULDN'T. BE. THIS. HARD.
+这。不。该。这。么。难。
 
-Remember how I said Unsafe Rust is like an FFI language for Safe Rust? Well, the
-compiler wants us to explicitly delimit where we're doing this FFI-ing. We have
-two options. First, we can mark our *entire* function as unsafe, in which case
-it becomes an Unsafe Rust function and can only be called in an `unsafe`
-context. This isn't great, because we want our list to be safe to use. Second,
-we can write an `unsafe` block inside our function, to delimit the FFI boundary.
-This declares the overall function to be safe. Let's do that one:
+还记得我说过不安全 Rust 就像是安全 Rust 的 FFI 语言吗？编译器希望我们明确划出
+在哪里做这种 FFI 调用。我们有两个选择。第一，我们可以把*整个*函数标记为 unsafe，
+这样它就变成一个不安全 Rust 函数，只能在`unsafe`上下文中被调用。这不太好，
+因为我们希望自己的链表用起来是安全的。第二，我们可以在函数内部写一个`unsafe`
+块，用来划定 FFI 的边界。这样就等于声明整个函数是安全的。我们选后者：
 
 
 ```rust ,ignore
@@ -224,53 +217,42 @@ warning: field is never used: `elem`
    = note: #[warn(dead_code)] on by default
 ```
 
-Yay!
+好耶！
 
-It's kind've interesting that that's the *only* place we've had to write an
-unsafe block so far. We do raw pointer stuff all over the place, what's up with
-that?
+挺有意思的是，到目前为止那居然是我们*唯一*不得不写 unsafe 块的地方。
+我们到处都在摆弄原始指针，这是怎么回事？
 
-It turns out that Rust is a massive rules-lawyer pedant when it comes to
-`unsafe`. We quite reasonably want to maximize the set of Safe Rust programs,
-because those are programs we can be much more confident in. To accomplish this,
-Rust carefully carves out a minimal surface area for unsafety. Note that all
-the other places we've worked with raw pointers has been *assigning* them, or
-just observing whether they're null or not.
+事实证明，一碰到`unsafe`，Rust 就是个极度较真的规则律师。我们非常合理地希望把
+安全 Rust 程序的集合最大化，因为那些程序我们能有把握得多。为了做到这一点，
+Rust 小心翼翼地把不安全的表面积削到最小。注意，我们之前摆弄原始指针的所有其他
+地方，要么是在给它们*赋值*，要么只是在看它们是不是空的。
 
-If you never actually dereference a raw pointer *those are totally safe things
-to do*. You're just reading and writing an integer! The only time you can
-actually get into trouble with a raw pointer is if you actually dereference it.
-So Rust says *only* that operation is unsafe, and everything else is totally
-safe.
+只要你从不真的去解引用一个原始指针，*那些操作都是完全安全的*。你不过是在读写
+一个整数罢了！你真正会因为原始指针而惹上麻烦的唯一时刻，就是你真的解引用它的
+时候。所以 Rust 说*只有*那个操作是不安全的，其他一切都完全安全。
 
-Super. Pedantic. But technically correct.
+极度。较真。但技术上没错。
 
-> **NARRATOR:** Somewhere on the other side of the world, a hardware engineer
-feels a shiver down her spine &mdash; someone must be insisting pointers
-are just integers again. She looks down at her proposal for a new hardware
-pointer authentication scheme and sheds a single tear. The compiler engineer
-next door feels nothing &mdash; they long ago learned to always wear a heavy
-sweater.
+> **旁白：**在世界的另一端，一位硬件工程师感到脊背一凉 &mdash; 一定又有人在
+坚称指针不过是整数了。她低头看了看自己那份新的硬件指针认证方案提案，
+流下一滴眼泪。隔壁的编译器工程师毫无感觉 &mdash; 他们早就学会了永远穿着
+厚毛衣。
 
-Having only some of the pointer operations be *actually* unsafe raises an
-interesting problem: although we're supposed to delimit the scope of the
-unsafety with the `unsafe` block, it actually depends on state that was
-established outside of the block. Outside of the function, even!
+只有一部分指针操作*真正*不安全，这引出了一个有趣的问题：虽然我们本该用`unsafe`
+块来划定不安全的范围，但它实际上依赖于在这个块之外建立起来的状态。
+甚至是在函数之外！
 
-This is what I call unsafe *taint*. As soon as you use `unsafe` in a module,
-that whole module is tainted with unsafety. Everything has to be correctly
-written in order to make sure all invariants are upheld for the unsafe code.
+这就是我所说的不安全*污染*。只要你在一个模块里用了`unsafe`，
+整个模块就被不安全性污染了。所有东西都必须写对，才能确保不安全代码所依赖的
+全部不变式都得以维持。
 
-This taint is manageable because of *privacy*. Outside of our module, all of our
-struct fields are totally private, so no one else can mess with our state in
-arbitrary ways. As long as no combination of the APIs we expose causes bad stuff
-to happen, as far as an outside observer is concerned, all of our code is safe!
-And really, this is no different from the FFI case. No one needs to care
-if some python math library shells out to C as long as it exposes a safe
-interface.
+这种污染之所以可控，是因为有*私有性*。在我们的模块之外，我们所有的结构体字段
+都是完全私有的，所以别人没法以任意方式搞乱我们的状态。只要我们暴露出去的 API
+的任何组合都不会导致糟糕的事情发生，那么在外部观察者看来，
+我们所有的代码就都是安全的！说到底，这和 FFI 的情形没什么两样。
+只要某个 python 数学库暴露的是安全接口，没人需要在乎它底下是不是调了 C。
 
-Anyway, let's move on to `pop`, which is pretty much verbatim the reference
-version:
+总之，我们继续看`pop`，它基本上就是把引用版本原样搬过来：
 
 ```rust ,ignore
 pub fn pop(&mut self) -> Option<T> {
@@ -287,11 +269,11 @@ pub fn pop(&mut self) -> Option<T> {
 }
 ```
 
-Again we see another case where safety is stateful. If we fail to null out the
-tail pointer in *this* function, we'll see no problems at all. However
-subsequent calls to `push` will start writing to the dangling tail!
+我们再一次看到安全性依赖于状态的例子。如果我们在*这个*函数里没能把尾指针置空，
+当下我们不会看到任何问题。然而后续对`push`的调用就会开始往那个悬垂的尾指针上
+写东西了！
 
-Let's test it out:
+我们来测试一下：
 
 ```rust ,ignore
 #[cfg(test)]
@@ -337,9 +319,8 @@ mod test {
 }
 ```
 
-This is just the stack test, but with the expected `pop` results flipped around.
-I also added some extra steps at the end to make sure that tail-pointer
-corruption case in `pop` doesn't occur.
+这就是栈的那个测试，只是把预期的`pop`结果顺序颠倒了过来。我还在末尾加了几步，
+用来确保`pop`里那种尾指针被破坏的情况不会发生。
 
 ```text
 cargo test
@@ -361,6 +342,6 @@ test third::test::iter ... ok
 test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured
 ```
 
-Gold Star!
+金星一枚！
 
-> **NARRATOR:** Here it comes...
+> **旁白：**它来了……

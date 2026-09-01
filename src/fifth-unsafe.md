@@ -1,50 +1,44 @@
-# Unsafe Rust
+# 不安全 Rust
 
-This is a serious, big, complicated, and dangerous topic.
-It's so serious that I wrote [an entire other book][nom] on it.
+这是一个严肃、庞大、复杂而且危险的话题。
+严肃到我为它专门写了[另一整本书][nom]。
 
-The long and the short of it is that *every* language is actually unsafe as soon
-as you allow calling into other languages, because you can just have C do
-arbitrarily bad things. Yes: Java, Python, Ruby, Haskell... everyone is wildly
-unsafe in the face of Foreign Function Interfaces (FFI).
+长话短说：只要你允许调用其他语言，*每一门*语言其实都是不安全的，
+因为你完全可以让 C 去干任意糟糕的事情。没错：Java、Python、Ruby、Haskell……
+在外部函数接口（FFI）面前，所有语言都极度不安全。
 
-Rust embraces this truth by splitting itself into two languages: Safe Rust, and
-Unsafe Rust. So far we've only worked with Safe Rust. It's completely 100%
-safe... except that it can FFI into Unsafe Rust.
+Rust 坦然接受了这个事实，把自己拆成了两门语言：安全 Rust 和不安全 Rust。
+到目前为止我们只用过安全 Rust。它是百分之百完全安全的……
+除了它可以通过 FFI 调进不安全 Rust 这一点。
 
-Unsafe Rust is a *superset* of Safe Rust. It's completely the same as Safe Rust in all its
-semantics and rules, you're just allowed to do a few *extra* things that are
-wildly unsafe and can cause the dreaded Undefined Behaviour that haunts C.
+不安全 Rust 是安全 Rust 的一个*超集*。它在所有语义和规则上都与安全 Rust
+完全相同，只是你被允许多做几件*额外*的事情，而这些事极度不安全，
+可能引发困扰着 C 的那个可怕的未定义行为。
 
-Again, this is a really huge topic that has a lot of interesting corner cases.
-I *really* don't want to go really deep into it (well, I do. I did. [Read that
-book][nom]). That's ok, because with linked lists we can actually ignore almost
-all of it.
+再说一遍，这是个极其庞大的话题，有着许多有趣的边角情形。我*真的*不想深入
+展开（好吧，我想。我已经写过了。[去读那本书][nom]）。不过没关系，
+因为在链表这件事上，我们其实几乎可以把它们统统无视掉。
 
-> **NARRATOR:** This was a lie, but it did seem true in 2015.
+> **旁白：**这是个谎言，不过在 2015 年它看起来确实是真的。
 
-The main Unsafe tool we'll be using are *raw pointers*. Raw pointers are
-basically C's pointers. They have no inherent aliasing rules. They have no
-lifetimes. They can be null. They can be misaligned. They can be dangling. They can point to
-uninitialized memory. They can be cast to and from integers. They can be cast
-to point to a different type. Mutability? Cast it. Pretty much everything goes,
-and that means pretty much anything can go wrong.
+我们要用到的主要不安全工具是*原始指针*。原始指针基本上就是 C 的指针。
+它们没有固有的别名规则。它们没有生命周期。它们可以是空的。它们可以是未对齐的。
+它们可以是悬垂的。它们可以指向未初始化的内存。它们可以和整数相互转换。
+它们可以被转换成指向另一种类型。可变性？转一下就行。基本上什么都能干，
+这也就意味着基本上什么都可能出错。
 
-> **NARRATOR:** no inherent aliasing rules, eh? Ah, the innocence of youth.
+> **旁白：**没有固有的别名规则，是吧？啊，年少无知啊。
 
-This is some bad stuff and honestly you'll live a happier life never having
-to touch these. Unfortunately, we want to write linked lists, and linked lists
-are awful. That means we're going to have to use unsafe pointers.
+这些都是些糟糕的东西，老实说，一辈子不碰它们你会活得更快乐。
+不幸的是，我们想写链表，而链表糟透了。这就意味着我们不得不使用不安全的指针。
 
-There are two kinds of raw pointer: `*const T` and `*mut T`. These are meant to
-be `const T*` and `T*` from C, but we really don't care about what C thinks they
-mean that much. You can only dereference a `*const T` to an `&T`, but much like
-the mutability of a variable, this is just a lint against incorrect usage. At
-most it just means you have to cast the `*const` to a `*mut` first. Although if
-you don't actually have permission to mutate the referent of the pointer,
-you're gonna have a bad time.
+原始指针有两种：`*const T`和`*mut T`。它们本意上对应 C 里的`const T*`和`T*`，
+不过我们其实不太在乎 C 认为它们是什么意思。你只能把`*const T`解引用成`&T`，
+但这就像变量的可变性一样，不过是一条针对错误用法的 lint。它至多意味着你得先把
+`*const`转换成`*mut`。当然，如果你实际上并没有修改该指针所指之物的权限，
+那你可有的受了。
 
-Anyway, we'll get a better feel for this as we write some code. For now,
-`*mut T == &unchecked mut T`!
+总之，等我们开始写代码，感觉就会清晰起来。现在只要记住：
+`*mut T == &unchecked mut T`！
 
 [nom]: https://doc.rust-lang.org/nightly/nomicon/
