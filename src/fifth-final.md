@@ -1,12 +1,11 @@
-# Final Code
+# 最终代码
 
-Alright, so with a teeny-tiny dash of unsafety we managed to get a linear
-time improvement over the naive safe queue, and we managed to reuse almost
-all of the logic from the safe stack!
+好了，只用了小小一撮不安全代码，我们就在朴素的安全队列基础上取得了线性时间的
+改进，而且几乎复用了安全栈的全部逻辑！
 
-You know, except for that part where miri completely dunked on us and we had to write a short master's thesis on rust's memory model. You know, as you do.
+当然啦，除了 miri 把我们按在地上摩擦、逼得我们写了篇关于 Rust 内存模型的短篇硕士论文那部分。你懂的，就那么回事。
 
-But on the bright side we *didn't* have to write any jank Rc or RefCell stuff.
+不过往好处看，我们*没有*被迫写任何蹩脚的 Rc 或者 RefCell 玩意儿。
 
 ```rust
 use std::ptr;

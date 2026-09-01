@@ -1,11 +1,10 @@
-# Extra Junk
+# 额外的零碎
 
-Now that `push` and `pop` are written, everything else is acutally exactly the same as the stack case, weirdly. Only operations that change the length of the list need to touch the tail pointer.
+既然`push`和`pop`都写好了，说来奇怪，其余一切其实和栈的情形完全相同。只有那些会改变链表长度的操作才需要动到尾指针。
 
-But of course, now that everything's unsafe pointers we need to rewrite the code to use those! And if we're going to be touching all the code, we might as well
-take the chance to make sure we aren't missing something.
+当然啦，既然现在一切都是不安全指针了，我们就得重写代码来使用它们！而且既然我们要把所有代码都过一遍，不如趁机确认一下有没有漏掉什么。
 
-But anyway, let's start copy-pasting code from the stack implementation:
+总之，我们先开始从栈的实现里复制粘贴代码：
 
 ```rust ,ignore
 // ...
@@ -21,7 +20,7 @@ pub struct IterMut<'a, T> {
 }
 ```
 
-IntoIter looks fine, but `Iter` and `IterMut` are breaking our simple rule of never using safe pointers in our types anymore. Let's be safe and change those to use raw pointers:
+IntoIter 看起来没问题，但`Iter`和`IterMut`违反了我们“类型里不再使用安全指针”的简单规则。保险起见，我们把它们改成用原始指针：
 
 ```rust ,ignore
 pub struct IntoIter<T>(List<T>);
@@ -49,7 +48,7 @@ impl<T> List<T> {
 }
 ```
 
-Looks good!
+看起来不错！
 
 ```text
 error[E0392]: parameter `'a` is never used
@@ -71,29 +70,29 @@ error[E0392]: parameter `'a` is never used
      or using a marker such as `PhantomData`
 ```
 
-Doesn't look good! What's this [PhantomData](https://doc.rust-lang.org/std/marker/struct.PhantomData.html) they're on about?
+看起来不妙！它们念叨的这个 [PhantomData](https://doc.rust-lang.org/std/marker/struct.PhantomData.html) 是什么东西？
 
-> Zero-sized type used to mark things that “act like” they own a `T`.
+> 零大小类型，用来标记那些“表现得像是”拥有一个`T`的东西。
 >
-> Adding a `PhantomData<T>` field to your type tells the compiler that your type acts as though it stores a value of type `T`, even though it doesn’t really. This information is used when computing certain safety properties.
+> 给你的类型加上一个`PhantomData<T>`字段，就是在告诉编译器：你的类型表现得就像它存储了一个`T`类型的值，尽管实际上并没有。在计算某些安全性属性时会用到这一信息。
 >
-> For a more in-depth explanation of how to use `PhantomData<T>`, please see [the Nomicon](https://doc.rust-lang.org/nightly/nomicon/).
+> 关于如何使用`PhantomData<T>`的更深入解释，请参见[死灵书](https://doc.rust-lang.org/nightly/nomicon/)。
 
-Hey don't get hasty there, we're reading the book that *I* wrote. Not that other book that some huge *nerd* probably wrote! I bet if they write a data structure in there it's something lame like an Array Stack and *not* a Linked List.
+嘿别急着跑题，我们读的是*我*写的书。可不是某个大*书呆子*写的那另一本！我敢打赌他们要是在那书里写个数据结构，肯定是数组栈之类的逊玩意儿，*才不是*链表。
 
-> Unused lifetime parameters
+> 未被使用的生命周期参数
 >
-> Perhaps the most common use case for PhantomData is a struct that has an unused lifetime parameter, typically as part of some unsafe code.
+> PhantomData 也许最常见的用例，就是某个结构体带有一个未被使用的生命周期参数，通常是某段不安全代码的一部分。
 
-Ah so we're naming a lifetime in our type but not actually using it. We *could* go down the PhantomData path, but I want to save that for the doubly-linked list in the next chapter that will *really* need it.
+啊，所以我们在类型里命名了一个生命周期，却没有真正使用它。我们*可以*走 PhantomData 这条路，但我想把它留给下一章的双向链表，那里*真的*会需要它。
 
-We're in an interesting situation where we actually don't need PhantomData. *I think*. I'm just going to claim that and trust that it's true, and if miri yells at us at the end I'll concede the point and we'll do the PhantomData thing.
+我们的处境挺有意思，其实我们并不需要 PhantomData。*我觉得*。我就这么断言了，并且相信它是真的；如果最后 miri 冲我们吼，我就认输，我们再去搞 PhantomData 那一套。
 
-What we're actually going to do is put the references back in these Iterator types and be happy we get to use references in some places still. I think that's sound because there's still a kind of proper nesting when you use an iterator: you create the iterator, use safe references for a while, and then discard the iterator. 
+我们实际要做的，是把引用放回这些迭代器类型里，并为还能在某些地方用上引用而高兴。我认为这是站得住脚的，因为使用迭代器时仍然存在一种恰当的嵌套：你创建迭代器，用一阵子安全引用，然后丢弃这个迭代器。
 
-Only once the iterator is gone can you access the list and call things like `push` and `pop` which need to mess with the tail pointer and Boxes. Now, during the iteration we *are* going to be dereferencing a bunch of raw pointers, so there is a kind of mixing there, but we should be able to think of those references as reborrows of the unsafe pointers.
+只有在迭代器消失之后，你才能访问链表并调用`push`、`pop`这类需要摆弄尾指针和 Box 的东西。当然，在迭代过程中我们*确实*会解引用一堆原始指针，所以那里是有某种混用的，不过我们应该可以把那些引用看作是对不安全指针的重借用。
 
-*I'm* not even 100% convinced but I just wanna give it a try and see!
+*我*自己都没有百分百被说服，但我就想试一把看看！
 
 ```rust ,ignore
 pub struct IntoIter<T>(List<T>);
@@ -125,23 +124,23 @@ impl<T> List<T> {
 }
 ```
 
-If we're going to be storing references, we need to upgrade our raw pointers to options-of-references. We *could* check if the pointer is null, but this is one of the incredibly narrow cases where I *think* it's ok to use the nasty [ptr::as_ref](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref-1) and [ptr::as_mut](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut) methods.
+如果我们要存引用，就需要把原始指针升级成“引用的 Option”。我们*可以*去检查指针是不是空的，但这正是那种极其狭窄的情形之一——我*认为*在这里用那两个讨厌的方法 [ptr::as_ref](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref-1) 和 [ptr::as_mut](https://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut) 是可以的。
 
-I *usually* recommend avoiding these methods like the plague because they do some surprising and nasty stuff and they're inherently reintroducing references when my whole "easy rule" is to avoid doing that!
+我*通常*建议像躲瘟疫一样躲开这些方法，因为它们会干出一些出人意料的恶心事，而且它们本质上就是在重新引入引用——而我那条“简单规则”的全部内容就是别这么干！
 
-Those methods come with a lot of warnings, but the most interesting is this:
+这些方法附带了一大堆警告，其中最有意思的是这条：
 
-> You must enforce Rust’s aliasing rules, since the returned lifetime `'a` is arbitrarily chosen and does not necessarily reflect the actual lifetime of the data. In particular, for the duration of this lifetime, the memory the pointer points to must not get accessed (read or written) through any other pointer.
+> 你必须自行强制遵守 Rust 的别名规则，因为返回的生命周期`'a`是任意选定的，未必反映数据的实际生命周期。具体来说，在这个生命周期期间，该指针所指向的内存不得通过任何其他指针被访问（读或写）。
 
-Hey look it's the thing we talked about for 25 pages! I have already asserted we're *definitely* going to be fine to use references here, so aliasing solved! The other evil part is the signature:
+嘿看，这不就是我们聊了 25 页的那玩意儿嘛！我已经断言过我们在这里用引用*肯定*没问题，所以别名问题解决！另一处邪恶的地方在于它的签名：
 
 ```rust ,ignore
 pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T>
 ```
 
-Do you see how that lifetime isn't attached to the input at all, because `self` is by-value? Yeah that's what we call an "unbounded lifetime" and it's nasty stuff. It's willing to pretend to be as large as we ask it to be, even `'static`! The way you *deal* with that is by putting it somewhere that *is* bounded, which usually just means "return this from a function as soon as possible so that the function signature limits it".
+你看到那个生命周期压根没和输入挂钩了吗，因为`self`是按值传的？没错，这就是我们所说的“无界生命周期”，是个恶心玩意儿。你要它多大，它就愿意假装自己有多大，连`'static`都行！*对付*它的办法，是把它放到一个*有界*的地方，通常也就是“尽快把它从函数里返回出去，好让函数签名限制住它”。
 
-Boy I'm nervous about this but we're gonna keep pushing through! Let's steal some iterator impls from the stack:
+老天我对此很紧张，但我们还是要硬着头皮往前推！我们从栈那边偷几个迭代器实现过来：
 
 ```rust ,ignore
 impl<T> Iterator for IntoIter<T> {
@@ -178,7 +177,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 }
 ```
 
-Moment of truth time...
+见证真相的时刻……
 
 ```text
 cargo test
@@ -226,13 +225,13 @@ test third::test::iter ... ok
 test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
-YES!!! Take that **NARRATOR**! Sometimes I don't make mistakes!
+太好了！！！看你的吧**旁白**！我有时候是不犯错的！
 
-> **NARRATOR**: but wasn't the whole point that the mistakes are there to teach the reader.
+> **旁白**：可整本书的意义不就在于用那些错误来教读者吗。
 
-YEAH WELL SOMETIMES THE LESSON IS THAT I'M RIGHT AND EVERYONE SHOULD LISTEN TO ME WHEN I SAY THINGS ABOUT UNSAFE CODE BECAUSE I HAVE SPENT FAR TOO MUCH TIME THINKING ABOUT THE SOUNDNESS OF ITERATOR IMPLEMENTATIONS?! OK?! OK.
+是啊，可有时候这一课就是我说得对，而且当我谈论不安全代码时所有人都该听我的，因为我在迭代器实现的可靠性上花的时间实在太多了？！懂吗？！懂了。
 
-Anyway here's `peek` and `peek_mut`.
+总之，这是`peek`和`peek_mut`。
 
 ```rust ,ignore
 pub fn peek(&self) -> Option<&T> {
@@ -248,9 +247,9 @@ pub fn peek_mut(&mut self) -> Option<&mut T> {
 }
 ```
 
-I'm not even gonna test them because I never make mistakes anymore.
+我压根都不打算测它们，因为我再也不犯错了。
 
-> **NARRATOR**: `cargo build`
+> **旁白**：`cargo build`
 
 ```text
 error[E0308]: mismatched types
@@ -272,7 +271,7 @@ error[E0308]: mismatched types
 
 ```
 
-FINE.
+行吧。
 
 ```rust ,ignore
 pub fn peek(&self) -> Option<&T> {
@@ -288,7 +287,7 @@ pub fn peek_mut(&mut self) -> Option<&mut T> {
 }
 ```
 
-I guess I am going to *continue* to make mistakes, so we're going to be extra careful and add a new test I'm going to call "miri food": something that just messes around and mixes up our APIs a bunch to help miri catch our mistakes.
+看来我还是会*继续*犯错，所以我们要格外小心，加一个新测试，我管它叫“miri 饲料”：一段专门到处乱搞、把我们的各种 API 混着调用的代码，好帮 miri 抓出我们的错误。
 
 ```rust ,ignore
 #[test]
@@ -379,4 +378,4 @@ test third::test::basics ... ok
 test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
-Perfect.
+完美。

@@ -2,9 +2,9 @@ relative_path	source_lines	target_path	batch	status
 src/README.md	318	src/README.md	Batch 1	translated
 src/SUMMARY.md	60	src/SUMMARY.md	Batch 1	translated
 src/fifth-basics.md	365	src/fifth-basics.md	Batch 5a	translated
-src/fifth-extras.md	382	src/fifth-extras.md	Batch 5d	source-copied
-src/fifth-final.md	256	src/fifth-final.md	Batch 5d	source-copied
-src/fifth-layout-basics-redux.md	278	src/fifth-layout-basics-redux.md	Batch 5d	source-copied
+src/fifth-extras.md	382	src/fifth-extras.md	Batch 5d	translated
+src/fifth-final.md	256	src/fifth-final.md	Batch 5d	translated
+src/fifth-layout-basics-redux.md	278	src/fifth-layout-basics-redux.md	Batch 5d	translated
 src/fifth-layout.md	525	src/fifth-layout.md	Batch 5a	translated
 src/fifth-miri.md	247	src/fifth-miri.md	Batch 5b	translated
 src/fifth-stacked-borrows.md	211	src/fifth-stacked-borrows.md	Batch 5b	translated
