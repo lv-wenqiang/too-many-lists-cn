@@ -42,7 +42,7 @@ error[E0308]: mismatched types
               found type `()`
 ```
 
-啊，`pop`必须返回一个值，我们还没做这件事。我们*可以*直接返回`None`，但是在这情况下，返回`unimplemented!`来指出我们没有完成该函数的实现会更好。`unimplemented!`是一个宏（`!代表一个宏`），它会在被调用的时候让整个程序panic（基本上也就是以可控的方式崩溃）。
+啊，`pop` 必须返回一个值，我们还没做这件事。我们*可以*直接返回 `None`，但是在这种情况下，返回 `unimplemented!()` 来表明函数尚未实现会更好。`unimplemented!()` 是一个宏（`!` 表示宏），执行到它时会让程序 panic（基本上就是以受控方式崩溃）。
 
 ```rust ,ignore
 pub fn pop(&mut self) -> Option<i32> {
@@ -58,7 +58,7 @@ pub fn pop(&mut self) -> Option<i32> {
 }
 ```
 
-无条件panic是一个[发散函数(diverging function)][diverging]的例子。发散函数永远不会返回到调用者，所以无论一个地方期待何种类型的返回值，它的返回值都能拿来用。在这里，`unimplemented!`被使用在期待一个`Option<T>`的地方。
+无条件 panic 是一个[发散函数][diverging]的例子。发散函数永远不会返回调用者，因此可以用在期待任意类型值的地方。这里，`unimplemented!()` 被用来代替 `Option<T>` 类型的值。
 
 注意到我们不需要在程序里写`return`。函数中的最后一个表达式也就隐式的成为它的返回值。这让我们可以更精炼的表达简单的逻辑。你也可以像C系语言一样，显式的`return`返回。
 
