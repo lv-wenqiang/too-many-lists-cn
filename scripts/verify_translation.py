@@ -9,6 +9,9 @@ FENCE_RE = re.compile(r"^((?:(?: {0,3}> ?)+| {0,3}))(`{3,}|~{3,})([^\n]*)(\n?)$"
 LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\(\s*<?([^\s)>]+)>?[^)]*\)")
 REFERENCE_RE = re.compile(r"^\s*\[[^]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE)
+HEADING_RE = re.compile(r"^ {0,3}(#{1,6})\s")
+LIST_ITEM_RE = re.compile(r"^\s*([*+-]|\d+[.)])\s")
+BLOCKQUOTE_RE = re.compile(r"^ {0,3}>")
 TRANSLATED_METADATA = {"book.toml"}
 
 
@@ -46,6 +49,46 @@ def fences(text, path):
     return result
 
 
+def block_structure(text):
+    """Block-level markers outside fenced blocks.
+
+    Returns the sequence of heading levels, the number of list items, and the
+    number of blockquote blocks. Counting blockquote *blocks* rather than lines
+    lets a translator re-wrap a quotation without tripping the check, while a
+    dropped `>` marker still collapses the block and fails.
+    """
+    headings = []
+    items = 0
+    quote_blocks = 0
+    in_quote = False
+    in_fence = False
+    fence_character = None
+    for line in text.splitlines():
+        match = FENCE_RE.match(line + "\n")
+        if match:
+            character = match.group(2)[0]
+            if not in_fence:
+                in_fence, fence_character = True, character
+            elif character == fence_character:
+                in_fence, fence_character = False, None
+            continue
+        if in_fence:
+            continue
+        if BLOCKQUOTE_RE.match(line):
+            if not in_quote:
+                quote_blocks += 1
+                in_quote = True
+            continue
+        in_quote = False
+        heading = HEADING_RE.match(line)
+        if heading:
+            headings.append(len(heading.group(1)))
+            continue
+        if LIST_ITEM_RE.match(line):
+            items += 1
+    return tuple(headings), items, quote_blocks
+
+
 def protected_links(text):
     links = [("inline link", match.group(1)) for match in LINK_RE.finditer(text)]
     images = [("image", match.group(1)) for match in IMAGE_RE.finditer(text)]
@@ -74,6 +117,13 @@ def compare(source, target):
         target_protected = protected_links(target_text)
         if source_protected != target_protected:
             errors.append(f"{relative}: protected link or image destinations differ")
+        source_structure = block_structure(source_text)
+        target_structure = block_structure(target_text)
+        if source_structure != target_structure:
+            errors.append(
+                f"{relative}: block structure differs "
+                f"(headings/list items/blockquotes {source_structure} != {target_structure})"
+            )
     source_summary_path, target_summary_path = source / "src/SUMMARY.md", target / "src/SUMMARY.md"
     if source_summary_path.exists() and target_summary_path.exists():
         source_summary = protected_links(source_summary_path.read_text(encoding="utf-8"))[0]

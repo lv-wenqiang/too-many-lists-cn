@@ -40,6 +40,7 @@ class VerifyTranslationTests(unittest.TestCase):
             "src/assets/a.bin": b"asset bytes",
             "lists/src/lib.rs": b"pub fn copied() {}\n",
             "src/assets/a.gif": b"GIF89a copied",
+            "src/three.md": "# Three\n\n## Parts\n\n* alpha\n* beta\n\n> quoted note\n> continued\n",
             "book.toml": "[book]\ntitle = \"source\"\n",
         }
 
@@ -139,6 +140,50 @@ class VerifyTranslationTests(unittest.TestCase):
         source = self.base_files(); target = dict(source)
         target["src/assets/a.gif"] = b"GIF89a changed"
         self.assert_failure(source, target, "Asset SHA-256 differs")
+
+    def test_translated_block_structure_passes(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = (
+            "# \u4e09\n\n## \u90e8\u5206\n\n* \u7532\n* \u4e59\n\n> \u5f15\u7528\n> \u7eed\u884c\n"
+        )
+        self.assertEqual(self.run_validator(source, target).returncode, 0)
+
+    def test_rewrapped_blockquote_passes(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace(
+            "> quoted note\n> continued\n", "> \u5f15\u7528\u5df2\u5408\u5e76\u4e3a\u4e00\u884c\n"
+        )
+        self.assertEqual(self.run_validator(source, target).returncode, 0)
+
+    def test_dropped_heading_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace("# Three", "Three", 1)
+        self.assert_failure(source, target, "block structure differs")
+
+    def test_changed_heading_level_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace("## Parts", "### Parts", 1)
+        self.assert_failure(source, target, "block structure differs")
+
+    def test_dropped_list_marker_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace("* beta", "beta", 1)
+        self.assert_failure(source, target, "block structure differs")
+
+    def test_dropped_blockquote_fails(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace(
+            "> quoted note\n> continued\n", "quoted note continued\n"
+        )
+        self.assert_failure(source, target, "block structure differs")
+
+    def test_block_structure_ignores_fenced_content(self):
+        source = self.base_files(); target = dict(source)
+        target["src/three.md"] = target["src/three.md"].replace(
+            "# Three", "# \u4e09", 1
+        ) + "\n```text\n# not a heading\n* not a list\n> not a quote\n```\n"
+        source["src/three.md"] = source["src/three.md"] + "\n```text\n# not a heading\n* not a list\n> not a quote\n```\n"
+        self.assertEqual(self.run_validator(source, target).returncode, 0)
 
 
 if __name__ == "__main__":
