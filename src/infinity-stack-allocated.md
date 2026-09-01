@@ -1,14 +1,14 @@
-# The Stack-Allocated Linked List
+# 栈上分配的链表
 
-This book is largely focused on *heap-allocated* linked lists, because those are the most common and practical, but we don't *have* to use heap allocation. Heap allocation is nice because it makes it easy to dynamically allocate memory. Stack allocation is less friendly in this regard &mdash; things like C's `alloca` are widely regarded as Very Cursed And Problematic.
+这本书主要聚焦于*堆上分配*的链表，因为那是最常见也最实用的；但我们*并非*必须使用堆分配。堆分配的好处在于它让动态分配内存变得容易。栈分配在这方面就没那么友好了 &mdash; 像 C 的`alloca`这种东西被普遍认为是极其邪门而麻烦的。
 
-So let's allocate memory on the stack the easy way: by calling a function and getting a new stack frame with more space! This is a very silly solution to our problem but also genuinely practical and useful. It's done all the time, potentially without actually even thinking about it as a linked list! 
+那我们就用最简单的方式在栈上分配内存：调用一个函数，从而得到一个有更多空间的新栈帧！这个解法对我们的问题来说非常蠢，但同时也是真正实用而有用的。人们一直在这么干，可能压根都没把它当成链表来想！
 
-Any time you're doing something recursively, you can just pass a pointer to the current step's state to the next step. If that pointer itself is *part* of the state, then you've created a linked list that's stack-allocated!
+任何时候你在递归地做某件事，都可以把指向当前这一步状态的指针传给下一步。如果那个指针本身就是状态的*一部分*，那你就造出了一个栈上分配的链表！
 
-Now of course we're in the *silly* part of the book so we're going to do this in a silly way: by making the linked list the star and forcing all the user's code to live in a swamp of callbacks. Everybody loves nested callbacks!
+当然，我们现在处在本书*犯蠢*的部分，所以我们要用一种蠢办法来做这件事：让链表当主角，逼着用户的代码全都住进回调的泥潭里。人人都爱嵌套回调！
 
-Our List type will just be a Node with a reference to another Node:
+我们的 List 类型不过是一个 Node，它持有一个指向另一个 Node 的引用：
 
 ```rust
 pub struct List<'a, T> {
@@ -17,7 +17,7 @@ pub struct List<'a, T> {
 }
 ```
 
-And it will have only one operation, `push`, which will take the old list, the state for the current node, and a callback. The new list will be produced in the callback. We will also let callbacks return any value, which `push` will return when it completes:
+而它只有一个操作，`push`，接受旧的链表、当前节点的状态，以及一个回调。新的链表将在回调中产生。我们还允许回调返回任意值，`push`会在完成时把它返回出去：
 
 ```rust ,ignore
 impl<'a, T> List<'a, T> {
@@ -32,7 +32,7 @@ impl<'a, T> List<'a, T> {
 }
 ```
 
-That's it! We can use it like this:
+就这样！我们可以这样使用它：
 
 ```rust ,ignore
 List::push(None, 3, |list| {
@@ -46,9 +46,9 @@ List::push(None, 3, |list| {
 })
 ```
 
-It's beautiful. 😿
+真美。😿
 
-The user can already traverse this list by using while-let to walk over the `prev` values, but just for fun, let's implement an iterator, which is the usual:
+用户已经可以用 while-let 遍历`prev`值来走完这个链表了，不过纯粹为了好玩，我们还是实现一个迭代器吧，还是老一套：
 
 ```rust ,ignore
 impl<'a, T> List<'a, T> {
@@ -69,7 +69,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 }
 ```
 
-Let's test it out:
+我们来测试一下：
 
 ```rust ,ignore
 #[cfg(test)]
@@ -117,7 +117,7 @@ test third::test::iter ... ok
 test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out;
 ```
 
-Now at this point you might be wonder "hey can I mutate the data stored in a node?". Maybe! Let's try to make the list use mutable references instead of shared ones:
+到这一步你可能会想“嘿，我能修改存在节点里的数据吗？”。也许可以！我们试着让链表改用可变引用而不是共享引用：
 
 
 ```rust
@@ -188,8 +188,8 @@ error[E0521]: borrowed data escapes outside of closure
 <ad infinitum>
 ```
 
-Whelp. Seems like it doesn't like our iterator. Maybe we messed that up? Let's
-simplify the test a bit to check:
+哎哟。看来它不喜欢我们的迭代器。也许是我们把它搞砸了？我们把测试
+简化一点来查一查：
 
 
 ```rust ,ignore
@@ -242,21 +242,21 @@ error[E0521]: borrowed data escapes outside of closure
    | |______________^ `list` escapes the closure body here
 ```
 
-Hmm no that's still some hot garbage.
+嗯，不对，这还是一坨热腾腾的垃圾。
 
-The problem is that our list is accidentally(😉) relying on *variance*. [Variance is a complicated subject](https://doc.rust-lang.org/nomicon/subtyping.html) but let's look at it in simplified terms here:
+问题在于，我们的链表意外地（😉）依赖了*型变*。[型变是个复杂的话题](https://doc.rust-lang.org/nomicon/subtyping.html)，不过这里我们用简化的方式来看：
 
-Each list contains a reference to a List with *the exact same type as itself*. From the perspective of the inner-most list, that means all lists are using the same lifetime as itself, but this is *objectively* false: each node in the list lives strictly longer than the next one, because they are literally in nested scopes!
+每个链表都持有一个指向 List 的引用，而那个 List *和它自己的类型完全相同*。从最内层链表的视角看，这意味着所有链表用的都是和它自己相同的生命周期，可这在*客观上*是错的：链表中的每个节点都严格地比下一个活得更久，因为它们字面意义上就处在层层嵌套的作用域里！
 
-So... why did the code compile when we were using shared references? Because in many cases, the compiler knows it's safe to have something that lives "too long"! When we stuff a reference to a list into the next one, the compiler is quietly "shrinking" down the lifetimes to make them fit what the new list expects. This lifetime shrinking is *variance*. 
+那……为什么我们用共享引用时代码就能编译呢？因为在很多情况下，编译器知道让某个东西活得“太久”是安全的！当我们把指向某个链表的引用塞进下一个链表时，编译器悄悄地把生命周期“缩小”了，好让它们符合新链表的预期。这种生命周期的缩小就是*型变*。
 
-It's the exact same trick in languages with inheritance that let's you pass a Cat where an Animal (a supertype of a Cat) is expected. Intuitively we know it's fine to pass a Cat when an Animal is expected because a Cat is just an Animal *and more*. It's *fine* to forget the "and more" part for a while, right?
+这和那些带继承的语言里让你在需要 Animal（Cat 的父类型）的地方传入一个 Cat 是完全一样的把戏。直觉上我们知道，在需要 Animal 的地方传 Cat 没问题，因为 Cat 就是 Animal *再加上一些别的*。暂时忘掉“再加上一些别的”那部分是*没问题*的，对吧？
 
-Similarly, a larger lifetime is just a smaller lifetime *and more*. So it's fine to forget the "and more" here too!
+同样地，一个更大的生命周期不过就是一个更小的生命周期*再加上一些别的*。所以在这里忘掉“再加上一些别的”也没问题！
 
-But of course you are now wondering: then why doesn't the mutable reference version work!?
+不过你现在当然会好奇：那为什么可变引用的版本就不行呢！？
 
-Well, variance *isn't* always safe. If our code *did* compile, we could have written a use-after-free like this:
+嗯，型变*并不*总是安全的。如果我们那段代码*真的*编译通过了，我们就能写出这样的释放后使用：
 
 ```rust ,ignore
 List::push(None, 3, |list| {
@@ -271,13 +271,12 @@ List::push(None, 3, |list| {
 })
 ```
 
-The problem with forgetting details is that *somewhere else might remember
-those details and expect them to remain true*. That is a very big problem
-once you introduce *mutation*. If you're not careful, the code that doesn't
-remember the "and more" that we threw away might think it's fine to write
-things to places that "remember" and *expect* the "and more" to still be there.
+忘掉细节的问题在于，*别的什么地方可能还记着那些细节，并指望它们依然成立*。
+一旦你引入了*修改*，这就是个非常大的问题。如果你不小心，那些不记得我们
+丢掉的“再加上一些别的”的代码，可能会觉得往那些“记着”并且*指望*
+“再加上一些别的”仍然存在的地方写东西是没问题的。
 
-Put in terms of inheritance: this code has to be illegal:
+用继承的说法来讲：下面这段代码必须是非法的：
 
 ```rust ,ignore
 let mut my_kitty = Cat;                  // Make a Cat (long lifetime)
@@ -286,25 +285,23 @@ let animal: &mut Animal = &mut my_kitty; // Forget it's a Cat (shorten lifetime)
 my_kitty.meow();                         // Meowing Dog! (Use After Free)
 ```
 
-So while you *can* shorten the lifetime of a mutable reference, once you start
-*nesting* them things become "invariant" and you're not allowed to shorten
-lifetimes anymore. 
+所以，虽然你*可以*缩短一个可变引用的生命周期，但一旦你开始*嵌套*它们，
+事情就变成“不变的”了，你就不再被允许缩短生命周期。
 
-Specifically `&mut &'big mut T` cannot be converted to `&mut &'small mut T`, 
-where `'big` is bigger than `'small`. Or more formally, `&'a mut T` is covariant
-over `'a` but invariant over `T`.
+具体来说，`&mut &'big mut T`不能被转换成`&mut &'small mut T`，
+其中`'big`比`'small`更大。更正式地说，`&'a mut T`对`'a`是协变的，
+但对`T`是不变的。
 
-Fun fact: Java actually specifically *lets* you do this kind of thing, but it
-[does runtime checks to prevent meowing dogs](https://docs.oracle.com/javase/7/docs/api/java/lang/ArrayStoreException.html).
+有趣的事实：Java 其实专门*允许*你做这类事情，但它
+[会做运行时检查，以防出现会喵喵叫的狗](https://docs.oracle.com/javase/7/docs/api/java/lang/ArrayStoreException.html)。
 
 ----
 
-So what can we do to mutate the data? Use interior mutability! This lets us
-tell the compiler that we just want to be able to mutate the *data* but won't
-touch the references.
+那我们要怎么才能修改数据呢？用内部可变性！这让我们能告诉编译器，
+我们只想能够修改*数据*，而不会去动那些引用。
 
-We can just revert back to the previous version of our code with shared references,
-and use `Cell` in a new test:
+我们可以直接退回到之前那个用共享引用的版本，
+然后在一个新测试里用上`Cell`：
 
 ```rust ,ignore
 #[test]
@@ -358,4 +355,4 @@ test second::test::iter ... ok
 test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out;
 ```
 
-Easy as recursive pie! ✨
+简单得像递归派一样！✨
