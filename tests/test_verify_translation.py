@@ -111,8 +111,8 @@ class VerifyTranslationTests(unittest.TestCase):
 
     def test_four_space_indented_code_changes_pass(self):
         source = self.base_files(); target = dict(source)
-        source["src/one.md"] += "\n    ordinary indented code\n"
-        target["src/one.md"] += "\n    changed ordinary indented code\n"
+        source["src/one.md"] += "\n    ```text\n    indented\n    ```\n"
+        target["src/one.md"] += "\n    ```text\n    changed\n    ```\n"
         self.assertEqual(self.run_validator(source, target).returncode, 0)
 
 
