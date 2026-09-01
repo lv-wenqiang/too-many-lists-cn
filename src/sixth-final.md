@@ -1,12 +1,12 @@
-# Final Code
+# 最终代码
 
-I can't believe I actually just made you sit through me actually reimplementing std::collections::LinkedList from scratch, with all the fiddly little pedantry and mistakes I made along the way.
+真不敢相信我居然刚刚让你从头到尾看完了我把 std::collections::LinkedList 从零重新实现一遍的过程，连同我一路上那些琐碎的较真和犯下的错误。
 
-I did it, the book is done, I can finally rest.
+我做到了，这本书写完了，我终于可以歇一歇了。
 
-Alright, here's all 1200 lines of our complete rewrite of  in all of its glory. This should be the same text as [this commit](https://github.com/contain-rs/linked-list/commit/5b69cc29454595172a5167a09277660342b78092).
+好了，下面就是我们这次彻底重写的全部 1200 行代码，尽显其荣光。这应该和[这个提交](https://github.com/contain-rs/linked-list/commit/5b69cc29454595172a5167a09277660342b78092)里的内容一致。
 
-I'll put some polish and docs back on and publish 0.1.0 later.
+我以后会把打磨和文档再补回去，然后发布 0.1.0。
 
 ```rust
 use std::cmp::Ordering;

@@ -28,9 +28,9 @@ src/fourth-layout.md	85	src/fourth-layout.md	Batch 4	translated
 src/fourth-peek.md	220	src/fourth-peek.md	Batch 4	translated
 src/fourth-symmetry.md	169	src/fourth-symmetry.md	Batch 4	translated
 src/fourth.md	25	src/fourth.md	Batch 4	translated
-src/infinity-double-single.md	243	src/infinity-double-single.md	Batch 7	source-copied
-src/infinity-stack-allocated.md	361	src/infinity-stack-allocated.md	Batch 7	source-copied
-src/infinity.md	16	src/infinity.md	Batch 7	source-copied
+src/infinity-double-single.md	243	src/infinity-double-single.md	Batch 7	translated
+src/infinity-stack-allocated.md	361	src/infinity-stack-allocated.md	Batch 7	translated
+src/infinity.md	16	src/infinity.md	Batch 7	translated
 src/second-final.md	199	src/second-final.md	Batch 2	translated
 src/second-generic.md	118	src/second-generic.md	Batch 2	translated
 src/second-into-iter.md	88	src/second-into-iter.md	Batch 2	translated
@@ -44,7 +44,7 @@ src/sixth-combinatorics.md	579	src/sixth-combinatorics.md	Batch 6b	translated
 src/sixth-cursors-impl.md	805	src/sixth-cursors-impl.md	Batch 6f	translated
 src/sixth-cursors-intro.md	122	src/sixth-cursors-intro.md	Batch 6e	translated
 src/sixth-cursors-testing.md	465	src/sixth-cursors-testing.md	Batch 6g	translated
-src/sixth-final.md	1211	src/sixth-final.md	Batch 6h	source-copied
+src/sixth-final.md	1211	src/sixth-final.md	Batch 6h	translated
 src/sixth-layout.md	88	src/sixth-layout.md	Batch 6a	translated
 src/sixth-panics.md	178	src/sixth-panics.md	Batch 6a	translated
 src/sixth-random-bits.md	577	src/sixth-random-bits.md	Batch 6c	translated
