@@ -11,9 +11,9 @@
 在这个过程中，我们会学到
 
 * Option 的进阶用法
-* 泛型
-* 生命周期
-* 迭代器
+* 泛型（generics）
+* 生命周期（lifetime）
+* 迭代器（Iterator）
 
 让我们添加一个名为`second.rs`的新文件：
 

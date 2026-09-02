@@ -10,11 +10,11 @@
 在这一系列教程中，我将会仅通过让你实现6个链表，教会你基础和高级的Rust编程。通过这么做，你应该能够学会：
 
 * 以下指针类型：`&`、`&mut`、`Box`、`Rc`、`Arc`、`*const`、`*mut`、`NonNull`（？）
-* 所有权，借用，可变性继承，内部可变性，Copy
+* 所有权（ownership），借用（borrowing），可变性继承，内部可变性（interior mutability），Copy
 * 所有的关键词：struct, enum, fn, pub, impl, use, ...
-* 模式匹配、泛型、析构函数
+* 模式匹配、泛型（generics）、析构函数（destructor）
 * 测试、安装新工具链、使用 `miri`
-* 不安全 Rust：原始指针、别名、Stacked Borrows（堆叠借用）、UnsafeCell、型变
+* 不安全 Rust：原始指针、别名（aliasing）、Stacked Borrows（堆叠借用）、UnsafeCell、型变（variance）
 
 没错，链表真的很糟糕，你必须用到所有这些概念才能够实现它。
 
