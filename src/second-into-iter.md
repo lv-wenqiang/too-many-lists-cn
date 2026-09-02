@@ -1,6 +1,6 @@
 # IntoIter
 
-在 Rust 中，集合是通过*Iterator*特征来迭代的。它比`Drop`要稍微复杂一点：
+在 Rust 中，集合是通过*Iterator* trait 来迭代的。它比`Drop`要稍微复杂一点：
 
 ```rust ,ignore
 pub trait Iterator {

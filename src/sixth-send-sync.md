@@ -1,8 +1,8 @@
 # Send、Sync 与编译测试
 
-好吧，其实我们还有一对特征要考虑，不过它们很特殊。我们得对付 Rust 的神圣罗马帝国：不安全的选择加入内建特征（OIBIT）：[Send 和 Sync](https://doc.rust-lang.org/nomicon/send-and-sync.html)——而它们实际上是选择退出、而且是外建的（三个词里对了一个，相当不错了！）。
+好吧，其实我们还有一对 trait 要考虑，不过它们很特殊。我们得对付 Rust 的神圣罗马帝国：不安全的选择加入内建 trait（OIBIT）：[Send 和 Sync](https://doc.rust-lang.org/nomicon/send-and-sync.html)——而它们实际上是选择退出、而且是外建的（三个词里对了一个，相当不错了！）。
 
-和 Copy 一样，这两个特征完全没有与之关联的代码，只是用来标记你的类型具备某项性质。Send 表示你的类型可以安全地发送到另一个线程。Sync 表示你的类型可以安全地在线程之间共享（&Self: Send）。
+和 Copy 一样，这两个 trait 完全没有与之关联的代码，只是用来标记你的类型具备某项性质。Send 表示你的类型可以安全地发送到另一个线程。Sync 表示你的类型可以安全地在线程之间共享（&Self: Send）。
 
 关于 LinkedList 为什么协变的那套论证在这里同样适用：一般来说，那些不使用花哨内部可变性技巧的普通集合，让它们 Send 和 Sync 都是安全的。
 
@@ -77,7 +77,7 @@ unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 ```
 
-注意我们在这里必须写*unsafe impl*：它们是*不安全特征*！不安全代码（比如并发库）可以依赖我们正确地实现这些特征！既然这里没有实际代码，我们所做的保证就仅仅是：是的，我们确实可以安全地在线程之间发送或共享！
+注意我们在这里必须写*unsafe impl*：它们是*不安全 trait*！不安全代码（比如并发库）可以依赖我们正确地实现这些 trait！既然这里没有实际代码，我们所做的保证就仅仅是：是的，我们确实可以安全地在线程之间发送或共享！
 
 别轻率地把这些往上一拍，不过我作为一名持证专业人士在此声明：没错，这些完全没问题。注意我们不需要为 IntoIter 实现 Send 和 Sync：它只包含一个 LinkedList，所以会自动推导出 Send 和 Sync &mdash; 我就说它们其实是选择退出的吧！（退出的语法很滑稽，是`impl !Send for MyType {}`。）
 
