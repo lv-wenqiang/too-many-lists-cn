@@ -8,6 +8,9 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
+# Required for GitHub Pages: the book is served from a subpath, and mdBook uses
+# this to emit <base href> in 404.html so its relative asset links resolve.
+site-url = "/too-many-lists-cn/"
 git-repository-url = "https://github.com/rust-unofficial/too-many-lists"
 
 [output.html.search]
