@@ -11,6 +11,11 @@ create-missing = false
 # Required for GitHub Pages: the book is served from a subpath, and mdBook uses
 # this to emit <base href> in 404.html so its relative asset links resolve.
 site-url = "/too-many-lists-cn/"
+# mdBook 0.5 lists the current page's h2-h6 in the sidebar. Only 4 of the 59
+# pages have any, and 9 of the 13 sit on the introduction, whose headings are
+# long sentences that wrap and swamp the chapter list. Off is the better trade
+# for this book.
+sidebar-header-nav = false
 git-repository-url = "https://github.com/rust-unofficial/too-many-lists"
 
 [output.html.search]
